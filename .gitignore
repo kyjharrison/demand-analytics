@@ -1,0 +1,6 @@
+bc-mirror/bc_keyvault_auth.py
+bc-mirror/schema/
+bc-mirror/bc_mirror.db
+bc-mirror/api_list.json
+__pycache__/
+*.pyc
