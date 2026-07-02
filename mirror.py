@@ -1,14 +1,14 @@
-from bc_keyvault_auth import build_bc_api_base_url, build_bc_odata_base_url, get_bc_connection, raise_bc_api_error
+from bc_keyvault_auth import build_bc_api_base_url, build_bc_odata_base_url, get_bc_connection
 import requests
 import sys
 import sqlite3
 import json
 import argparse
 from datetime import datetime
-import pathlib
+from pathlib import Path
 
 BC_CONFIG, BC_HEADERS = get_bc_connection()
-CONN = sqlite3.connect("bc_mirror.db")
+CONN = sqlite3.connect(Path(__file__).parent / "bc_mirror.db")
 
 def parse_response(response):
     data_raw = response.json()
@@ -33,10 +33,12 @@ def call_api(endpoint, api_type):
         print(response.text)
         sys.exit(1)
 
-def initialize_table(api_type, refresh_mode, endpoint, id_column, secondary_id=None, watermark_column=None, watermark_type=None, table_filter=None):
+def initialize_table(api_type, refresh_mode, endpoint, id_column, secondary_id=None, tertiary_id=None, watermark_column=None, watermark_type=None, table_filter=None):
     data, _ = parse_response(call_api(f"{endpoint}?$top=1", api_type))
     keys = data[0].keys()
-    if secondary_id:
+    if tertiary_id:
+        fields = ", ".join(keys) + f", PRIMARY KEY ({id_column}, {secondary_id}, {tertiary_id})"
+    elif secondary_id:
         fields = ", ".join(keys) + f", PRIMARY KEY ({id_column}, {secondary_id})"
     else:
         fields = ", ".join([k + " PRIMARY KEY" if k == id_column else k for k in keys])
@@ -46,12 +48,13 @@ def initialize_table(api_type, refresh_mode, endpoint, id_column, secondary_id=N
         "api_type": api_type, # base | odata
         "refresh_mode": refresh_mode, # upsert | truncate
         "watermark_column": watermark_column, # column name
-        "watermark_type": watermark_type, # string | datetime
+        "watermark_type": watermark_type, # string | date_integer
         "id_column": id_column, 
         "secondary_id": secondary_id,
+        "tertiary_id": tertiary_id,
         "table_filter": table_filter
         }
-    with open(f"schema/{endpoint}.json", "w") as f:
+    with open(Path(__file__).parent / "schema" / f"{endpoint}.json", "w") as f:
         json.dump(schema, f, indent=2)
 
 def refresh_table(schema): 
@@ -71,7 +74,7 @@ def refresh_table(schema):
         watermark = check_watermark[0] if check_watermark else None
 
     if watermark:
-        if watermark_type == "datetime":
+        if watermark_type == "date_integer":
             data, next_link = parse_response(call_api(f"{endpoint}?$filter={watermark_column} ge {watermark}", api_type))
         elif watermark_type == "string":
             data, next_link = parse_response(call_api(f"{endpoint}?$filter={watermark_column} ge '{watermark}'", api_type))
@@ -109,7 +112,7 @@ def refresh_table(schema):
     if watermark_column:
         watermark = CONN.execute(f"SELECT MAX({watermark_column}) FROM {endpoint}").fetchone()[0]
     values = (endpoint, watermark, timestamp)
-    CONN.execute(f"INSERT OR REPLACE INTO watermark (endpoint, latest_diff, last_refreshed) VALUES (?, ?, ?)", values)
+    CONN.execute("INSERT OR REPLACE INTO watermark (endpoint, latest_diff, last_refreshed) VALUES (?, ?, ?)", values)
     CONN.commit()
     print(f"{endpoint} refreshed: {count} records updated in {datetime.now() - start}")
 
@@ -131,6 +134,7 @@ if __name__ == "__main__":
     new.add_argument("--endpoint", required=True)
     new.add_argument("--id_column", required=True)
     new.add_argument("--secondary_id")
+    new.add_argument("--tertiary_id")
     new.add_argument("--watermark_column") # omit for full refresh every time
     new.add_argument("--watermark_type") # omit for full refresh every time
     new.add_argument("--table_filter") # DO NOT COMBINE WITH WATERMARK
@@ -146,15 +150,15 @@ if __name__ == "__main__":
             print(json.dumps(line))
 
     if args.mode == "new": 
-        initialize_table(args.api_type, args.refresh_mode, args.endpoint, args.id_column, args.secondary_id, args.watermark_column, args.watermark_type, args.table_filter) 
+        initialize_table(args.api_type, args.refresh_mode, args.endpoint, args.id_column, args.secondary_id, args.tertiary_id, args.watermark_column, args.watermark_type, args.table_filter) 
 
     if args.mode == "refresh":  
         if args.endpoint:
-            with open(pathlib.Path("schema") / f"{args.endpoint}.json") as f:
+            with open(Path(__file__).parent / "schema" / f"{args.endpoint}.json") as f:
                 schema = json.load(f)
             refresh_table(schema)
         else:
-            for file in pathlib.Path("schema").glob("*.json"):
+            for file in (Path(__file__).parent / "schema").glob("*.json"):
                 try:    
                     with open(file) as f:
                         schema = json.load(f)

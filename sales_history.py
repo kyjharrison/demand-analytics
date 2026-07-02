@@ -5,8 +5,9 @@ from dateutil.relativedelta import relativedelta
 import pandas as pd
 import os
 import numpy as np
+from pathlib import Path
 
-CONN = sqlite3.connect("bc_mirror.db")
+CONN = sqlite3.connect(Path(__file__).parent / "bc-mirror/bc_mirror.db")
 
 def case_when(period_start):
     period_end = period_start + relativedelta(months=1)
@@ -17,23 +18,9 @@ def case_when(period_start):
         f"THEN lines.Quantity ELSE 0 END) AS \"{label}\""
     )
 
-def run():
+def run(items=None, customer=None, location=None):
     now = datetime.now()
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--items")
-    parser.add_argument("--customer")
-    parser.add_argument("--location")
-
-    """
-    parser.add_argument("--start") 
-    parser.add_argument("--grain") 
-    parser.add_argument("--periods") # TODO later add month-to-date
-    parser.add_argument("--uom")
-    parser.add_argument("--state")
-    """
-    args = parser.parse_args()
-
+    
     start = (now.replace(day=1) - relativedelta(months=12))
     periods = 12
     end = start + relativedelta(months=periods)
@@ -52,14 +39,14 @@ def run():
     lines.append(f"WHERE headers.Posting_Date >= '{start.strftime('%Y-%m-%d')}'")
     lines.append(f"AND headers.Posting_Date < '{end.strftime('%Y-%m-%d')}'")
     lines.append("AND lines.Type = 'Item'")
-    if args.items:
-        items = args.items.split("|") 
+    if items:
+        items = items.split("|") 
         item_list = ", ".join(f"'{i}'" for i in items)
         lines.append(f"AND lines.No IN ({item_list})")
-    if args.customer:
-        lines.append(f"AND lines.Sell_to_Customer_No = '{args.customer}'")
-    if args.location:
-        lines.append(f"AND headers.Location_Code = '{args.location}'")
+    if customer:
+        lines.append(f"AND lines.Sell_to_Customer_No = '{customer}'")
+    if location:
+        lines.append(f"AND headers.Location_Code = '{location}'")
     lines.append("GROUP BY lines.No")
 
     query = " \n".join(lines)
@@ -77,8 +64,29 @@ def run():
     df = df.replace([np.inf, -np.inf], np.nan)
     df = df.sort_values('12m_avg', ascending=False)
 
-    filename = f"sales-history-{now.strftime('%y-%m-%d')}.xlsx"
+    return df
     
+if __name__ == "__main__":
+
+    now = datetime.now()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--items")
+    parser.add_argument("--customer")
+    parser.add_argument("--location")
+
+    """
+    parser.add_argument("--start") 
+    parser.add_argument("--grain") 
+    parser.add_argument("--periods") # TODO later add month-to-date
+    parser.add_argument("--uom")
+    parser.add_argument("--state")
+    """
+    args = parser.parse_args()
+
+    df = run(items=args.items, customer=args.customer, location=args.location)
+
+    filename = f"sales-history-{now.strftime('%y-%m-%d')}.xlsx"
     with pd.ExcelWriter(filename, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Sales History')
         workbook = writer.book
@@ -96,8 +104,6 @@ def run():
         worksheet.set_column(1, len(df.columns)-3, None, num_format)
         worksheet.set_column(len(df.columns)-1, len(df.columns)-1, None, pct_format)
 
+    print(f"Completed in {datetime.now() - now}")
+
     os.startfile(filename)
-
-
-if __name__ == "__main__":
-    print(run())
