@@ -1,0 +1,9 @@
+{
+  "endpoint": "Stockkeeping_Unit_Card_Excel",
+  "api_type": "odata",
+  "refresh_mode": "truncate",
+  "watermark_column": null,
+  "watermark_type": null,
+  "id_column": "Item_No",
+  "secondary_id": "Location_Code"
+}

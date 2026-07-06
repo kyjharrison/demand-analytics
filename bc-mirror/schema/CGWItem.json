@@ -1,0 +1,10 @@
+{
+  "endpoint": "CGWItem",
+  "api_type": "odata",
+  "refresh_mode": "upsert",
+  "watermark_column": "LastModifiedDate",
+  "watermark_type": "date_integer",
+  "id_column": "ItemKey",
+  "secondary_id": null,
+  "table_filter": null
+}

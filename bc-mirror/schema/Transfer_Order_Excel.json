@@ -1,0 +1,10 @@
+{
+  "endpoint": "Transfer_Order_Excel",
+  "api_type": "odata",
+  "refresh_mode": "truncate",
+  "watermark_column": null,
+  "watermark_type": null,
+  "id_column": "No",
+  "secondary_id": null,
+  "table_filter": null
+}

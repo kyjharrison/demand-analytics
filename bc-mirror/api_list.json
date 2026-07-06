@@ -1,0 +1,440 @@
+[
+  [
+    {
+      "name": "entityDefinitions",
+      "kind": "EntitySet",
+      "url": "entityDefinitions"
+    },
+    {
+      "name": "companies",
+      "kind": "EntitySet",
+      "url": "companies"
+    },
+    {
+      "name": "subscriptions",
+      "kind": "EntitySet",
+      "url": "subscriptions"
+    },
+    {
+      "name": "externaleventsubscriptions",
+      "kind": "EntitySet",
+      "url": "externaleventsubscriptions"
+    },
+    {
+      "name": "externalbusinesseventdefinitions",
+      "kind": "EntitySet",
+      "url": "externalbusinesseventdefinitions"
+    },
+    {
+      "name": "apicategoryroutes",
+      "kind": "EntitySet",
+      "url": "apicategoryroutes"
+    },
+    {
+      "name": "items",
+      "kind": "EntitySet",
+      "url": "items"
+    },
+    {
+      "name": "inventoryPostingGroups",
+      "kind": "EntitySet",
+      "url": "inventoryPostingGroups"
+    },
+    {
+      "name": "generalProductPostingGroups",
+      "kind": "EntitySet",
+      "url": "generalProductPostingGroups"
+    },
+    {
+      "name": "unitsOfMeasure",
+      "kind": "EntitySet",
+      "url": "unitsOfMeasure"
+    },
+    {
+      "name": "pictures",
+      "kind": "EntitySet",
+      "url": "pictures"
+    },
+    {
+      "name": "defaultDimensions",
+      "kind": "EntitySet",
+      "url": "defaultDimensions"
+    },
+    {
+      "name": "itemVariants",
+      "kind": "EntitySet",
+      "url": "itemVariants"
+    },
+    {
+      "name": "documentAttachments",
+      "kind": "EntitySet",
+      "url": "documentAttachments"
+    },
+    {
+      "name": "customers",
+      "kind": "EntitySet",
+      "url": "customers"
+    },
+    {
+      "name": "customerFinancialDetails",
+      "kind": "EntitySet",
+      "url": "customerFinancialDetails"
+    },
+    {
+      "name": "agedAccountsReceivables",
+      "kind": "EntitySet",
+      "url": "agedAccountsReceivables"
+    },
+    {
+      "name": "contactsInformation",
+      "kind": "EntitySet",
+      "url": "contactsInformation"
+    },
+    {
+      "name": "contacts",
+      "kind": "EntitySet",
+      "url": "contacts"
+    },
+    {
+      "name": "vendors",
+      "kind": "EntitySet",
+      "url": "vendors"
+    },
+    {
+      "name": "agedAccountsPayables",
+      "kind": "EntitySet",
+      "url": "agedAccountsPayables"
+    },
+    {
+      "name": "companyInformation",
+      "kind": "EntitySet",
+      "url": "companyInformation"
+    },
+    {
+      "name": "salesInvoices",
+      "kind": "EntitySet",
+      "url": "salesInvoices"
+    },
+    {
+      "name": "dimensionSetLines",
+      "kind": "EntitySet",
+      "url": "dimensionSetLines"
+    },
+    {
+      "name": "salesInvoiceLines",
+      "kind": "EntitySet",
+      "url": "salesInvoiceLines"
+    },
+    {
+      "name": "locations",
+      "kind": "EntitySet",
+      "url": "locations"
+    },
+    {
+      "name": "pdfDocument",
+      "kind": "EntitySet",
+      "url": "pdfDocument"
+    },
+    {
+      "name": "attachments",
+      "kind": "EntitySet",
+      "url": "attachments"
+    },
+    {
+      "name": "customerPaymentJournals",
+      "kind": "EntitySet",
+      "url": "customerPaymentJournals"
+    },
+    {
+      "name": "customerPayments",
+      "kind": "EntitySet",
+      "url": "customerPayments"
+    },
+    {
+      "name": "accounts",
+      "kind": "EntitySet",
+      "url": "accounts"
+    },
+    {
+      "name": "taxGroups",
+      "kind": "EntitySet",
+      "url": "taxGroups"
+    },
+    {
+      "name": "journals",
+      "kind": "EntitySet",
+      "url": "journals"
+    },
+    {
+      "name": "journalLines",
+      "kind": "EntitySet",
+      "url": "journalLines"
+    },
+    {
+      "name": "employees",
+      "kind": "EntitySet",
+      "url": "employees"
+    },
+    {
+      "name": "timeRegistrationEntries",
+      "kind": "EntitySet",
+      "url": "timeRegistrationEntries"
+    },
+    {
+      "name": "generalLedgerEntries",
+      "kind": "EntitySet",
+      "url": "generalLedgerEntries"
+    },
+    {
+      "name": "currencies",
+      "kind": "EntitySet",
+      "url": "currencies"
+    },
+    {
+      "name": "paymentMethods",
+      "kind": "EntitySet",
+      "url": "paymentMethods"
+    },
+    {
+      "name": "dimensions",
+      "kind": "EntitySet",
+      "url": "dimensions"
+    },
+    {
+      "name": "dimensionValues",
+      "kind": "EntitySet",
+      "url": "dimensionValues"
+    },
+    {
+      "name": "paymentTerms",
+      "kind": "EntitySet",
+      "url": "paymentTerms"
+    },
+    {
+      "name": "shipmentMethods",
+      "kind": "EntitySet",
+      "url": "shipmentMethods"
+    },
+    {
+      "name": "itemCategories",
+      "kind": "EntitySet",
+      "url": "itemCategories"
+    },
+    {
+      "name": "cashFlowStatements",
+      "kind": "EntitySet",
+      "url": "cashFlowStatements"
+    },
+    {
+      "name": "countriesRegions",
+      "kind": "EntitySet",
+      "url": "countriesRegions"
+    },
+    {
+      "name": "salesOrders",
+      "kind": "EntitySet",
+      "url": "salesOrders"
+    },
+    {
+      "name": "salesOrderLines",
+      "kind": "EntitySet",
+      "url": "salesOrderLines"
+    },
+    {
+      "name": "retainedEarningsStatements",
+      "kind": "EntitySet",
+      "url": "retainedEarningsStatements"
+    },
+    {
+      "name": "balanceSheets",
+      "kind": "EntitySet",
+      "url": "balanceSheets"
+    },
+    {
+      "name": "trialBalances",
+      "kind": "EntitySet",
+      "url": "trialBalances"
+    },
+    {
+      "name": "incomeStatements",
+      "kind": "EntitySet",
+      "url": "incomeStatements"
+    },
+    {
+      "name": "taxAreas",
+      "kind": "EntitySet",
+      "url": "taxAreas"
+    },
+    {
+      "name": "salesQuotes",
+      "kind": "EntitySet",
+      "url": "salesQuotes"
+    },
+    {
+      "name": "salesQuoteLines",
+      "kind": "EntitySet",
+      "url": "salesQuoteLines"
+    },
+    {
+      "name": "salesCreditMemos",
+      "kind": "EntitySet",
+      "url": "salesCreditMemos"
+    },
+    {
+      "name": "salesCreditMemoLines",
+      "kind": "EntitySet",
+      "url": "salesCreditMemoLines"
+    },
+    {
+      "name": "purchaseInvoices",
+      "kind": "EntitySet",
+      "url": "purchaseInvoices"
+    },
+    {
+      "name": "purchaseInvoiceLines",
+      "kind": "EntitySet",
+      "url": "purchaseInvoiceLines"
+    },
+    {
+      "name": "projects",
+      "kind": "EntitySet",
+      "url": "projects"
+    },
+    {
+      "name": "bankAccounts",
+      "kind": "EntitySet",
+      "url": "bankAccounts"
+    },
+    {
+      "name": "vendorPayments",
+      "kind": "EntitySet",
+      "url": "vendorPayments"
+    },
+    {
+      "name": "applyVendorEntries",
+      "kind": "EntitySet",
+      "url": "applyVendorEntries"
+    },
+    {
+      "name": "vendorPaymentJournals",
+      "kind": "EntitySet",
+      "url": "vendorPaymentJournals"
+    },
+    {
+      "name": "salesShipments",
+      "kind": "EntitySet",
+      "url": "salesShipments"
+    },
+    {
+      "name": "salesShipmentLines",
+      "kind": "EntitySet",
+      "url": "salesShipmentLines"
+    },
+    {
+      "name": "purchaseReceipts",
+      "kind": "EntitySet",
+      "url": "purchaseReceipts"
+    },
+    {
+      "name": "purchaseReceiptLines",
+      "kind": "EntitySet",
+      "url": "purchaseReceiptLines"
+    },
+    {
+      "name": "purchaseOrders",
+      "kind": "EntitySet",
+      "url": "purchaseOrders"
+    },
+    {
+      "name": "purchaseOrderLines",
+      "kind": "EntitySet",
+      "url": "purchaseOrderLines"
+    },
+    {
+      "name": "itemLedgerEntries",
+      "kind": "EntitySet",
+      "url": "itemLedgerEntries"
+    },
+    {
+      "name": "opportunities",
+      "kind": "EntitySet",
+      "url": "opportunities"
+    },
+    {
+      "name": "salespeoplePurchasers",
+      "kind": "EntitySet",
+      "url": "salespeoplePurchasers"
+    },
+    {
+      "name": "customerReturnReasons",
+      "kind": "EntitySet",
+      "url": "customerReturnReasons"
+    },
+    {
+      "name": "purchaseCreditMemos",
+      "kind": "EntitySet",
+      "url": "purchaseCreditMemos"
+    },
+    {
+      "name": "purchaseCreditMemoLines",
+      "kind": "EntitySet",
+      "url": "purchaseCreditMemoLines"
+    },
+    {
+      "name": "currencyExchangeRates",
+      "kind": "EntitySet",
+      "url": "currencyExchangeRates"
+    },
+    {
+      "name": "accountingPeriods",
+      "kind": "EntitySet",
+      "url": "accountingPeriods"
+    },
+    {
+      "name": "generalLedgerSetup",
+      "kind": "EntitySet",
+      "url": "generalLedgerSetup"
+    },
+    {
+      "name": "disputeStatus",
+      "kind": "EntitySet",
+      "url": "disputeStatus"
+    },
+    {
+      "name": "customerContacts",
+      "kind": "EntitySet",
+      "url": "customerContacts"
+    },
+    {
+      "name": "jobQueueLogEntries",
+      "kind": "EntitySet",
+      "url": "jobQueueLogEntries"
+    },
+    {
+      "name": "jobQueueEntries",
+      "kind": "EntitySet",
+      "url": "jobQueueEntries"
+    },
+    {
+      "name": "fixedAssetLocations",
+      "kind": "EntitySet",
+      "url": "fixedAssetLocations"
+    },
+    {
+      "name": "fixedAssets",
+      "kind": "EntitySet",
+      "url": "fixedAssets"
+    },
+    {
+      "name": "customerSales",
+      "kind": "EntitySet",
+      "url": "customerSales"
+    },
+    {
+      "name": "vendorPurchases",
+      "kind": "EntitySet",
+      "url": "vendorPurchases"
+    }
+  ],
+  null
+]
