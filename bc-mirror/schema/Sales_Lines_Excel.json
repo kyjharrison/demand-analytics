@@ -1,0 +1,11 @@
+{
+  "endpoint": "Sales_Lines_Excel",
+  "api_type": "odata",
+  "refresh_mode": "truncate",
+  "watermark_column": null,
+  "watermark_type": null,
+  "id_column": "Document_No",
+  "secondary_id": "Line_No",
+  "tertiary_id": null,
+  "table_filter": "Document_Type eq 'Order' or Document_Type eq 'Blanket Order'"
+}
