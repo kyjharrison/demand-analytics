@@ -21,6 +21,11 @@ ALIASES = {
     "Qty Shipped": "Qty Shipped ",
 }
 
+SHIP_BUFFER_DAYS = 7
+TRANSIT_DAYS = 42
+CUTOFF = pd.Timestamp.today().normalize() + pd.Timedelta(days=TRANSIT_DAYS)
+
+
 def find_invoice(container):
     while True:
         for folder in IN_TRANSIT_FOLDER_PATH.iterdir():
@@ -79,7 +84,7 @@ def parse_camel_invoice(filepath):
     return invoice_dict, po_list, filter_string, shipment_date # tuple
 
 def find_purlines():
-    required_columns = ["Document No.", "Line No.", "No.", "Quantity", "Qty. to Receive", "Quantity Received"]
+    required_columns = ["Document No.", "Line No.", "No.", "Expected Receipt Date", "Quantity", "Outstanding Quantity", "Qty. to Receive","Ship Date"]
     while True:
         files = list(DOWNLOADS_PATH.glob("Default*.xlsx"))
         newest = max(files, key=lambda x: x.stat().st_mtime)
@@ -100,33 +105,60 @@ def find_purlines():
             input("Try again?")
     return df
 
-def clean_purlines(df, po_list):
-    df = df[df["Document No."].isin(po_list)]
+# filters to only lines on this container and/or past due
+def filter_purlines(df, po_list):
+    
+    df["Expected Receipt Date"] = pd.to_datetime(df["Expected Receipt Date"])
+    df["Ship Date"] = pd.to_datetime(df["Ship Date"])
+
+    shipped = df["Document No."].isin(po_list)
+    past_due = (df["Expected Receipt Date"] < CUTOFF) & (df["Outstanding Quantity"] > 0)
+    
+    df = df[shipped | past_due]
     df["po_item_key"] = df.apply(lambda row: f"{row['Document No.']}|{row['No.'].replace('-','')}", axis=1)
-    df["qty_remaining"] = df["Quantity"] - df["Quantity Received"]
-    df.loc[:, "Qty. to Receive"] = 0
     return df
 
-def update_qty_to_receive(aggregated_invoice, cleaned_purlines): # dict, df
+def update_purlines(aggregated_invoice, filtered_purlines): # dict, df
+    
     lines = []
-    for key, group in cleaned_purlines.groupby("po_item_key"):
-        if key in aggregated_invoice:
-            remaining = aggregated_invoice[key]
-            open_lines = group[group["qty_remaining"]>0].sort_values("Line No.")
-            if open_lines.empty:
-                group.loc[group["Line No."].idxmax(), "Qty. to Receive"] = remaining
-            else:
-                for idx, line in open_lines.iterrows():
-                    if remaining > line["qty_remaining"]:
-                        group.loc[idx, "Qty. to Receive"] = line["qty_remaining"]
-                        remaining = remaining - line["qty_remaining"]
-                    else:
-                        group.loc[idx, "Qty. to Receive"] = remaining
-                        remaining = 0
-                        break
-                if remaining > 0:
-                    group.loc[open_lines.index[-1], "Qty. to Receive"] += remaining
-            lines.append(group)
+
+    # split df into subsets
+    shipped = filtered_purlines["po_item_key"].isin(aggregated_invoice)
+    past_due = filtered_purlines["Expected Receipt Date"] < CUTOFF
+
+    update_qty_shipped = filtered_purlines[shipped].copy() # what's actually on the container
+    update_qty_zero = filtered_purlines[~shipped & ~past_due].copy() # other lines on POs this invoice touches, which need to be zeroed out and not received
+    update_date = filtered_purlines[past_due].copy() # past due lines, whether on these POs or others, which need their dates updated
+
+    # input qties shipped
+    for key, group in update_qty_shipped.groupby("po_item_key"):
+        remaining = aggregated_invoice[key]
+        open_lines = group[group["Outstanding Quantity"]>0].sort_values("Line No.")
+        if open_lines.empty:
+            group.loc[group["Line No."].idxmax(), "Qty. to Receive"] = remaining
+        else:
+            for idx, line in open_lines.iterrows():
+                if remaining > line["Outstanding Quantity"]:
+                    group.loc[idx, "Qty. to Receive"] = line["Outstanding Quantity"]
+                    remaining = remaining - line["Outstanding Quantity"]
+                else:
+                    group.loc[idx, "Qty. to Receive"] = remaining
+                    remaining = 0
+                    break
+            if remaining > 0:
+                group.loc[open_lines.index[-1], "Qty. to Receive"] += remaining
+        lines.append(group)
+
+    # zero out all other lines
+    update_qty_zero.loc[:, "Qty. to Receive"] = 0
+    update_date.loc[:, "Qty. to Receive"] = 0
+    lines.append(update_qty_zero)    
+
+    # update dates
+    update_date.loc[:, "Ship Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=SHIP_BUFFER_DAYS)
+    update_date.loc[:, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=SHIP_BUFFER_DAYS + TRANSIT_DAYS)
+    lines.append(update_date)
+
     return pd.concat(lines) # returns df
 
 def summarize_for_transfer(aggregated_invoice_dict):
@@ -147,10 +179,10 @@ def main():
     else:
         container = sys.argv[1]
     aggregated_invoice, po_list, filter_string, shipment_date = parse_camel_invoice(find_invoice(container))
-    cleaned_purlines = clean_purlines(find_purlines(), po_list)
-    lines = update_qty_to_receive(aggregated_invoice, cleaned_purlines)
+    filtered_purlines = filter_purlines(find_purlines(), po_list)
+    lines = update_purlines(aggregated_invoice, filtered_purlines)
     invoice = set(aggregated_invoice)
-    purlines = set(cleaned_purlines["po_item_key"])
+    purlines = set(filtered_purlines["po_item_key"])
     missing = invoice - purlines
     if missing:
         for po_item in missing:
