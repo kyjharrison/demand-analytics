@@ -10,7 +10,7 @@ from pathlib import Path
 import win32com.client
 import json
 
-with open(Path(__file__).parent.parent / "config.json") as f:
+with open(Path(__file__).parent.parent / "internal/config.json") as f:
     config = json.load(f)
 
 CONN = sqlite3.connect(config["MIRROR_PATH"])
@@ -64,18 +64,18 @@ if not df.empty:
 	mail.CC = config["cc_me"]
 	mail.Subject = "ASSEMBLEOUT"
 	mail.HTMLBody = f"""Good morning, <br><br>
-	Please check on these items — they've been sitting in ASSEMBLEOUT for more than 2 days.<br><br>
+	This is an automated alert that the following inventory appears to have been in ASSEMBLEOUT for more than 2 days.<br><br>
 	{table_html} <br>
 	Thank you,<br>
 	{config["me"]}<br>
 	{config["signature"]}
 	"""
 
-	mail.send()
+	mail.Send()
 
 else:
 	outlook = win32com.client.Dispatch("Outlook.Application")
 	mail = outlook.CreateItem(0)
 	mail.To = config["cc_me"]
 	mail.Subject = "ASSEMBLEOUT clear EOM"
-	mail.send()
+	mail.Send()
