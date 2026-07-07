@@ -46,6 +46,7 @@ WHERE Balance > 0
 	AND Registering_Date > last_emptied_date
 GROUP BY Item_No
 HAVING Min(Registering_Date) < DATE('now', '-2 days')
+ORDER BY 'Date Posted'
 """
 
 df = pd.read_sql(query, CONN)
