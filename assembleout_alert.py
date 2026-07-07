@@ -14,6 +14,7 @@ with open(Path(__file__).parent.parent / "internal/config.json") as f:
     config = json.load(f)
 
 CONN = sqlite3.connect(config["MIRROR_PATH"])
+CUTOFF = (pd.Timestamp.now() - pd.offsets.BusinessDay(2)).strftime('%Y-%m-%d')
 
 query = """
 WITH running_balance AS(
@@ -45,11 +46,11 @@ LEFT JOIN last_emptied USING (Item_No)
 WHERE Balance > 0 
 	AND Registering_Date > last_emptied_date
 GROUP BY Item_No
-HAVING Min(Registering_Date) < DATE('now', '-2 days')
+HAVING Min(Registering_Date) < :CUTOFF
 ORDER BY 'Date Posted'
 """
 
-df = pd.read_sql(query, CONN)
+df = pd.read_sql(query, CONN, params={"cutoff": CUTOFF})
 
 if not df.empty:
 
