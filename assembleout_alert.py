@@ -50,7 +50,7 @@ HAVING Min(Registering_Date) < :CUTOFF
 ORDER BY 'Date Posted'
 """
 
-df = pd.read_sql(query, CONN, params={"cutoff": CUTOFF})
+df = pd.read_sql(query, CONN, params={"CUTOFF": CUTOFF})
 
 if not df.empty:
 
