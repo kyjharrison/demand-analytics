@@ -10,6 +10,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "internal/bc-mirror"))
 from bc_keyvault_auth import build_bc_api_base_url, build_bc_odata_base_url, get_bc_connection
+from clean_tables.py import CLEAN_TABLES
 
 BC_CONFIG, BC_HEADERS = get_bc_connection()
 
@@ -17,6 +18,7 @@ with open(Path(__file__).parent.parent / "internal/config.json") as f:
     config = json.load(f)
 
 CONN_RAW = sqlite3.connect(config["DB_RAW"])
+CONN_CLEAN = sqlite3.connect(config["DB_CLEAN"])
 
 handler = TimedRotatingFileHandler(
     Path(__file__).parent.parent / "logs/mirror_refresh.log",
@@ -133,6 +135,16 @@ def refresh_table(schema):
     CONN_RAW.commit()
     logging.info(f"{endpoint} refreshed: {count} records updated in {datetime.now() - start}")
 
+def build_clean_mirror():
+    start = datetime.now()
+    for table, query in CLEAN_TABLES.items():
+        table_start = datetime.now()
+        CONN_CLEAN.execute(f"DROP TABLE IF EXISTS {table}")
+        CONN_CLEAN.execute(f"CREATE TABLE {table} AS {query}")
+        logging.info(f"{table} refreshed in {datetime.now() - table_start}")
+    CONN_CLEAN.commit()
+    logging.info(f"clean_mirror.db rebuilt in {datetime.now() - start}")
+
 
 if __name__ == "__main__":
 
@@ -165,7 +177,7 @@ if __name__ == "__main__":
         if args.mode == "test": 
             top = parse_response(call_api(args.endpoint, args.api_type))
             for line in top[0]:
-                logging.info(json.dumps(line))
+                print(json.dumps(line))
 
         if args.mode == "new": 
             initialize_table(args.api_type, args.refresh_mode, args.endpoint, args.id_column, args.secondary_id, args.tertiary_id, args.watermark_column, args.watermark_type, args.table_filter) 
@@ -182,10 +194,14 @@ if __name__ == "__main__":
                             schema = json.load(f)
                             refresh_table(schema)
                     except Exception as e:
-                        logging.info(f"{file.stem} failed: {e}", exc_info=True)
-                        logging.info(e)
+                        logging.error(f"{file.stem} failed: {e}", exc_info=True)
+                        logging.error(e)
         
-        logging.info(f"Completed in {datetime.now() - start}")
+        logging.info(f"BC refresh completed in {datetime.now() - start}")
+
+        build_clean_mirror()
+
+        logging.info(f"Full refresh completed in {datetime.now() - start}")
     
     except Exception as e:
         logging.critical(f"Script crashed: {e}", exc_info=True)
