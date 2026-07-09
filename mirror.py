@@ -10,7 +10,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "internal/bc-mirror"))
 from bc_keyvault_auth import build_bc_api_base_url, build_bc_odata_base_url, get_bc_connection
-from clean_tables.py import CLEAN_TABLES
+from clean_tables import CLEAN_TABLES
 
 BC_CONFIG, BC_HEADERS = get_bc_connection()
 
