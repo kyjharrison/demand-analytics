@@ -63,7 +63,7 @@ if not df.empty:
 	outlook = win32com.client.Dispatch("Outlook.Application")
 	mail = outlook.CreateItem(0)
 	mail.To = config["inventory_team"]
-	mail.CC = config["cc_me"]
+	mail.CC = f"{config["production_manager"]}; {config["cc_me"]}"
 	mail.Subject = "ASSEMBLEOUT"
 	mail.HTMLBody = f"""Good morning, <br><br>
 	This is an automated alert that the following inventory appears to have been in ASSEMBLEOUT for more than 2 days.<br><br>
