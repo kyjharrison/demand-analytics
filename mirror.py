@@ -1,4 +1,3 @@
-from bc_keyvault_auth import build_bc_api_base_url, build_bc_odata_base_url, get_bc_connection
 import requests
 import sys
 import sqlite3
@@ -6,9 +5,27 @@ import json
 import argparse
 from datetime import datetime
 from pathlib import Path
+import logging
+from logging.handlers import TimedRotatingFileHandler
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "internal/bc-mirror"))
+from bc_keyvault_auth import build_bc_api_base_url, build_bc_odata_base_url, get_bc_connection
 
 BC_CONFIG, BC_HEADERS = get_bc_connection()
-CONN = sqlite3.connect(Path(__file__).parent / "bc_mirror.db")
+
+with open(Path(__file__).parent.parent / "internal/config.json") as f:
+    config = json.load(f)
+
+CONN_RAW = sqlite3.connect(config["DB_RAW"])
+
+handler = TimedRotatingFileHandler(
+    Path(__file__).parent.parent / "logs/mirror_refresh.log",
+    when="midnight",
+    backupCount=14,
+)
+
+handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+logging.basicConfig(level=logging.INFO, handlers=[handler])
 
 def parse_response(response):
     data_raw = response.json()
@@ -19,18 +36,18 @@ def parse_response(response):
     return data, next_link
 
 def call_api(endpoint, api_type):
-    print(f"Contacting server for endpoint: {endpoint} . . . ")
+    logging.info(f"Contacting server for endpoint: {endpoint} . . . ")
     if api_type == "base":
         response = requests.get(f"{build_bc_api_base_url(BC_CONFIG)}/{endpoint}", headers=BC_HEADERS)
     elif api_type == "odata":
         response = requests.get(f"{build_bc_odata_base_url(BC_CONFIG)}/{endpoint}", headers=BC_HEADERS)
     else:
-        print('api_type must be defined as "base" or "odata"')
+        logging.error('api_type must be defined as "base" or "odata"')
         sys.exit(1)
     if response.ok:
         return response
     else:
-        print(response.text)
+        logging.error(f"{endpoint} returned {response.status_code}: {response.text}")
         sys.exit(1)
 
 def initialize_table(api_type, refresh_mode, endpoint, id_column, secondary_id=None, tertiary_id=None, watermark_column=None, watermark_type=None, table_filter=None):
@@ -42,7 +59,7 @@ def initialize_table(api_type, refresh_mode, endpoint, id_column, secondary_id=N
         fields = ", ".join(keys) + f", PRIMARY KEY ({id_column}, {secondary_id})"
     else:
         fields = ", ".join([k + " PRIMARY KEY" if k == id_column else k for k in keys])
-    CONN.execute(f"CREATE TABLE IF NOT EXISTS {endpoint} ({fields})")
+    CONN_RAW.execute(f"CREATE TABLE IF NOT EXISTS {endpoint} ({fields})")
     schema = {
         "endpoint": endpoint, 
         "api_type": api_type, # base | odata
@@ -54,7 +71,7 @@ def initialize_table(api_type, refresh_mode, endpoint, id_column, secondary_id=N
         "tertiary_id": tertiary_id,
         "table_filter": table_filter
         }
-    with open(Path(__file__).parent / "schema" / f"{endpoint}.json", "w") as f:
+    with open(Path(config["SCHEMA_DIR"])/ f"{endpoint}.json", "w") as f:
         json.dump(schema, f, indent=2)
 
 def refresh_table(schema): 
@@ -70,7 +87,7 @@ def refresh_table(schema):
 
     watermark = None
     if watermark_column:
-        check_watermark = CONN.execute(f"SELECT latest_diff FROM watermark WHERE endpoint = '{endpoint}'").fetchone()
+        check_watermark = CONN_RAW.execute(f"SELECT latest_diff FROM watermark WHERE endpoint = '{endpoint}'").fetchone()
         watermark = check_watermark[0] if check_watermark else None
 
     if watermark:
@@ -79,7 +96,7 @@ def refresh_table(schema):
         elif watermark_type == "string":
             data, next_link = parse_response(call_api(f"{endpoint}?$filter={watermark_column} ge '{watermark}'", api_type))
         else:
-            print(f"Schema must define watermark_type. Please check {endpoint}.json and try again.")
+            logging.error(f"Schema must define watermark_type. Please check {endpoint}.json and try again.")
             sys.exit(1)
     elif table_filter:
         data, next_link = parse_response(call_api(f"{endpoint}?$filter={table_filter}", api_type))
@@ -90,8 +107,8 @@ def refresh_table(schema):
     fields = ", ".join(keys)
 
     if refresh_mode == "truncate":
-        CONN.execute(f"DELETE FROM {endpoint}")
-        CONN.commit()
+        CONN_RAW.execute(f"DELETE FROM {endpoint}")
+        CONN_RAW.commit()
 
     i = 0
     count = 0
@@ -99,9 +116,9 @@ def refresh_table(schema):
         i = i + 1
         records = [tuple(record.values()) for record in data]
         count = count + len(records)
-        CONN.executemany(f"INSERT OR REPLACE INTO {endpoint} ({fields}) VALUES ({', '.join('?' * number)})", records)
-        CONN.commit()
-        print(f"{endpoint} written to file — page {i}")
+        CONN_RAW.executemany(f"INSERT OR REPLACE INTO {endpoint} ({fields}) VALUES ({', '.join('?' * number)})", records)
+        CONN_RAW.commit()
+        logging.info(f"{endpoint} written to file — page {i}")
         if next_link:
             data, next_link = parse_response(requests.get(next_link, headers=BC_HEADERS))
             continue
@@ -110,61 +127,66 @@ def refresh_table(schema):
     timestamp = datetime.now().isoformat()
 
     if watermark_column:
-        watermark = CONN.execute(f"SELECT MAX({watermark_column}) FROM {endpoint}").fetchone()[0]
+        watermark = CONN_RAW.execute(f"SELECT MAX({watermark_column}) FROM {endpoint}").fetchone()[0]
     values = (endpoint, watermark, timestamp)
-    CONN.execute("INSERT OR REPLACE INTO watermark (endpoint, latest_diff, last_refreshed) VALUES (?, ?, ?)", values)
-    CONN.commit()
-    print(f"{endpoint} refreshed: {count} records updated in {datetime.now() - start}")
+    CONN_RAW.execute("INSERT OR REPLACE INTO watermark (endpoint, latest_diff, last_refreshed) VALUES (?, ?, ?)", values)
+    CONN_RAW.commit()
+    logging.info(f"{endpoint} refreshed: {count} records updated in {datetime.now() - start}")
 
 
 if __name__ == "__main__":
 
-    start = datetime.now()
+    try:
+        start = datetime.now()
 
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest="mode")
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="mode")
 
-    test = subparsers.add_parser("test")
-    test.add_argument("--api_type", required=True)
-    test.add_argument("--endpoint", required=True)
+        test = subparsers.add_parser("test")
+        test.add_argument("--api_type", required=True)
+        test.add_argument("--endpoint", required=True)
 
-    new = subparsers.add_parser("new")
-    new.add_argument("--api_type", required=True)
-    new.add_argument("--refresh_mode", required=True)
-    new.add_argument("--endpoint", required=True)
-    new.add_argument("--id_column", required=True)
-    new.add_argument("--secondary_id")
-    new.add_argument("--tertiary_id")
-    new.add_argument("--watermark_column") # omit for full refresh every time
-    new.add_argument("--watermark_type") # omit for full refresh every time
-    new.add_argument("--table_filter") # DO NOT COMBINE WITH WATERMARK
+        new = subparsers.add_parser("new")
+        new.add_argument("--api_type", required=True)
+        new.add_argument("--refresh_mode", required=True)
+        new.add_argument("--endpoint", required=True)
+        new.add_argument("--id_column", required=True)
+        new.add_argument("--secondary_id")
+        new.add_argument("--tertiary_id")
+        new.add_argument("--watermark_column") # omit for full refresh every time
+        new.add_argument("--watermark_type") # omit for full refresh every time
+        new.add_argument("--table_filter") # DO NOT COMBINE WITH WATERMARK
 
-    refresh = subparsers.add_parser("refresh")
-    refresh.add_argument("--endpoint")
+        refresh = subparsers.add_parser("refresh")
+        refresh.add_argument("--endpoint")
 
-    args = parser.parse_args()
+        args = parser.parse_args()
 
-    if args.mode == "test": 
-        top = parse_response(call_api(args.endpoint, args.api_type))
-        for line in top[0]:
-            print(json.dumps(line))
+        if args.mode == "test": 
+            top = parse_response(call_api(args.endpoint, args.api_type))
+            for line in top[0]:
+                logging.info(json.dumps(line))
 
-    if args.mode == "new": 
-        initialize_table(args.api_type, args.refresh_mode, args.endpoint, args.id_column, args.secondary_id, args.tertiary_id, args.watermark_column, args.watermark_type, args.table_filter) 
+        if args.mode == "new": 
+            initialize_table(args.api_type, args.refresh_mode, args.endpoint, args.id_column, args.secondary_id, args.tertiary_id, args.watermark_column, args.watermark_type, args.table_filter) 
 
-    if args.mode == "refresh":  
-        if args.endpoint:
-            with open(Path(__file__).parent / "schema" / f"{args.endpoint}.json") as f:
-                schema = json.load(f)
-            refresh_table(schema)
-        else:
-            for file in (Path(__file__).parent / "schema").glob("*.json"):
-                try:    
-                    with open(file) as f:
-                        schema = json.load(f)
-                        refresh_table(schema)
-                except Exception as e:
-                    print(f"{file.stem} failed, skipping to next table. Wait for refresh to finish before debugging.")
-                    print(e)
+        if args.mode == "refresh":  
+            if args.endpoint:
+                with open(Path(config["SCHEMA_DIR"]) / f"{args.endpoint}.json") as f:
+                    schema = json.load(f)
+                refresh_table(schema)
+            else:
+                for file in Path(config["SCHEMA_DIR"]).glob("*.json"):
+                    try:    
+                        with open(file) as f:
+                            schema = json.load(f)
+                            refresh_table(schema)
+                    except Exception as e:
+                        logging.info(f"{file.stem} failed: {e}", exc_info=True)
+                        logging.info(e)
+        
+        logging.info(f"Completed in {datetime.now() - start}")
     
-    print(f"Completed in {datetime.now() - start}")
+    except Exception as e:
+        logging.critical(f"Script crashed: {e}", exc_info=True)
+        sys.exit(1)
