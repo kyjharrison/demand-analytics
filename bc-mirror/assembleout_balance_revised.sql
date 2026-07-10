@@ -9,7 +9,7 @@ WITH running_balance AS(
 			OVER (PARTITION BY Item_No ORDER BY Registering_Date DESC) 
 			AS rn 
 		FROM Warehouse_Entries_Excel
-	WHERE Bin_Code = 'ASSEMBLEOUT' 
+	WHERE Bin_Code = 'SHIP' 
 ),
 
 last_emptied AS(
@@ -28,3 +28,5 @@ WHERE Balance > 0
 	AND Registering_Date > last_emptied_date
 GROUP BY Item_No
 HAVING Min(Registering_Date) < DATE('now', '-2 days')
+	AND MAX(CASE WHEN rn = 1 THEN Balance END) > 0
+ORDER BY Min(Registering_Date) ASC
