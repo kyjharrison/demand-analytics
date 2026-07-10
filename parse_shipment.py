@@ -118,6 +118,28 @@ def filter_purlines(df, po_list):
     df["po_item_key"] = df.apply(lambda row: f"{row['Document No.']}|{row['No.'].replace('-','')}", axis=1)
     return df
 
+def fill_qties(group, remaining):
+    open_lines = group[group["Outstanding Quantity"]>0].sort_values("Line No.")
+    if open_lines.empty:
+        group.loc[group["Line No."].idxmax(), "Qty. to Receive"] = remaining
+    else:
+        for idx, line in open_lines.iterrows():
+            if remaining > line["Outstanding Quantity"]:
+                group.loc[idx, "Qty. to Receive"] = line["Outstanding Quantity"]
+                remaining = remaining - line["Outstanding Quantity"]
+            else:
+                group.loc[idx, "Qty. to Receive"] = remaining
+                remaining = 0
+                break
+        if remaining > 0:
+            group.loc[open_lines.index[-1], "Qty. to Receive"] += remaining
+    return group
+
+def update_date(df):
+    df.loc[:, "Ship Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=SHIP_BUFFER_DAYS)
+    df.loc[:, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=SHIP_BUFFER_DAYS + TRANSIT_DAYS)
+    return df
+
 def update_purlines(aggregated_invoice, filtered_purlines): # dict, df
     
     lines = []
@@ -126,38 +148,30 @@ def update_purlines(aggregated_invoice, filtered_purlines): # dict, df
     shipped = filtered_purlines["po_item_key"].isin(aggregated_invoice)
     past_due = filtered_purlines["Expected Receipt Date"] < CUTOFF
 
-    update_qty_shipped = filtered_purlines[shipped].copy() # what's actually on the container
-    update_qty_zero = filtered_purlines[~shipped & ~past_due].copy() # other lines on POs this invoice touches, which need to be zeroed out and not received
-    update_date = filtered_purlines[past_due].copy() # past due lines, whether on these POs or others, which need their dates updated
+    shipped_only = filtered_purlines[shipped & ~past_due].copy() # what's on the container and not past_due
+    zero_only = filtered_purlines[~shipped & ~past_due].copy() # other lines on POs this invoice touches, which need to be zeroed out and not received
+    date_only = filtered_purlines[past_due & ~shipped].copy() # past due lines, whether on these POs or others, which need their dates updated
+    shipped_and_date = filtered_purlines[shipped & past_due].copy() # partial lines on this container where the remaining balance is also past due
 
     # input qties shipped
-    for key, group in update_qty_shipped.groupby("po_item_key"):
+    for key, group in shipped_only.groupby("po_item_key"):
         remaining = aggregated_invoice[key]
-        open_lines = group[group["Outstanding Quantity"]>0].sort_values("Line No.")
-        if open_lines.empty:
-            group.loc[group["Line No."].idxmax(), "Qty. to Receive"] = remaining
-        else:
-            for idx, line in open_lines.iterrows():
-                if remaining > line["Outstanding Quantity"]:
-                    group.loc[idx, "Qty. to Receive"] = line["Outstanding Quantity"]
-                    remaining = remaining - line["Outstanding Quantity"]
-                else:
-                    group.loc[idx, "Qty. to Receive"] = remaining
-                    remaining = 0
-                    break
-            if remaining > 0:
-                group.loc[open_lines.index[-1], "Qty. to Receive"] += remaining
+        lines.append(fill_qties(group, remaining))
+
+    # input qties and bump dates
+    for key, group in shipped_and_date.groupby("po_item_key"):
+        remaining = aggregated_invoice[key]
+        group = fill_qties(group, remaining)
+        group = update_date(group)
         lines.append(group)
 
-    # zero out all other lines
-    update_qty_zero.loc[:, "Qty. to Receive"] = 0
-    update_date.loc[:, "Qty. to Receive"] = 0
-    lines.append(update_qty_zero)    
+    # zero qties
+    zero_only.loc[:, "Qty. to Receive"] = 0
+    lines.append(zero_only)
 
-    # update dates
-    update_date.loc[:, "Ship Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=SHIP_BUFFER_DAYS)
-    update_date.loc[:, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=SHIP_BUFFER_DAYS + TRANSIT_DAYS)
-    lines.append(update_date)
+    # bump dates
+    date_only.loc[:, "Qty. to Receive"] = 0
+    lines.append(update_date(date_only)) 
 
     return pd.concat(lines) # returns df
 
