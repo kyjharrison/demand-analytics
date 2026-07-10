@@ -4,7 +4,7 @@ Demand analysis tools for a local SQLite mirror of Dynamics 365 Business Central
 
 ## About
 
-Got tired of clicking around the Business Central frontend UI, waiting endlessly for tables to download to Excel, and then manually joining them over and over. So I taught myself Python and SQL. 
+Got tired of clicking around the Business Central frontend UI, waiting endlessly for tables to download to Excel, and then manually joining them over and over. Taught myself Python and SQL about it. 
 
 ### mirror.py
 
@@ -23,7 +23,10 @@ Runs in seconds and automatically opens the file in Excel. Pretty slick.
 - SQLite
 - Dynamics 365 Business Central OData API
 - Azure Key Vault
-- Dependencies listed in requirements.txt
+
+## Setup
+- Python dependencies listed in `requirements.txt`
+- Specific filepaths, email addresses, and other internal information read from a `config.json` file instead of hardcoded in.
 
 ## Usage
 Configured for a specific internal environment with our existing Azure Key Vault setup, but should work with any method of authenticating a Python query against a BC OData API endpoint. 
