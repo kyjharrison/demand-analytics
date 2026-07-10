@@ -19,7 +19,7 @@ import sales_history
 with open(Path(__file__).parent / "config.json") as f:
     config = json.load(f)
 
-CONN = sqlite3.connect(config["MIRROR_PATH"])
+CONN_RAW = sqlite3.connect(config["DB_RAW"])
 DIR = config["SSR_DIR"] 
 
 def ssr():
@@ -37,7 +37,7 @@ def ssr():
                 ItemSupplierCode as Vendor, 
                 CostPerUnit as 'Unit Cost'
             FROM CGWItem
-            """, CONN)
+            """, CONN_RAW)
     df = df.merge(pd.read_sql("""
             SELECT Item, SUM(Qty) as "Qty OH" 
             FROM (
@@ -49,7 +49,7 @@ def ssr():
                 GROUP BY Item
             )
             GROUP BY Item
-            """, CONN), on="Item", how="left")
+            """, CONN_RAW), on="Item", how="left")
 
     df = df.merge(pd.read_sql("""
             SELECT 
@@ -58,19 +58,19 @@ def ssr():
                 SUM(Qty_on_Blanket_Sales_Order) as 'Qty on Blanket SO' 
                 from Stockkeeping_Unit_Card_Excel
             GROUP BY Item
-            """, CONN), on="Item", how="left")
+            """, CONN_RAW), on="Item", how="left")
 
     df = df.merge(pd.read_sql("""
             SELECT No as Item, SUM(Outstanding_Quantity) as "Qty on PO" from Purchase_Lines_Excel
             WHERE Type = 'Item'
             GROUP BY Item
-            """, CONN), on="Item", how="left")
+            """, CONN_RAW), on="Item", how="left")
 
     df = df.merge(pd.read_sql("""
             SELECT ItemNo as Item, SUM(TransferOrderQty) as 'Qty in Transit' from CGWTransferOrder
             WHERE LocationFromCode = '06'
             GROUP BY Item
-            """, CONN), on="Item", how="left")
+            """, CONN_RAW), on="Item", how="left")
 
     history = sales_history.run()
     last_12m = history.columns[1:13]
@@ -97,7 +97,7 @@ def run():
                         Shipment_Date
                     from Transfer_Order_Excel
                     WHERE CGWContainerNo LIKE '%CAMEL%'
-                    """, CONN).sort_values("Shipment_Date")
+                    """, CONN_RAW).sort_values("Shipment_Date")
 
     now = datetime.now()
 
@@ -116,7 +116,7 @@ def run():
     outlook = win32com.client.Dispatch("Outlook.Application")
     mail = outlook.CreateItem(0)
     mail.To = config["camel_team"]
-    mail.CC = f'{config["cc_me"]};{config["roberto"]}'
+    mail.CC = f'{config["cc_me"]};{config["purchaser"]}'
     mail.Attachments.Add(str(f))
     mail.Subject = "SSR"
     mail.HTMLBody = f"""Hello Tami and Zakaria, <br><br>
@@ -139,7 +139,7 @@ def run():
     print(f"Historical snapshot SSR written to {f}")
 
     mail = outlook.CreateItem(0)
-    mail.To = config["roberto"]
+    mail.To = config["purchaser"]
     mail.CC = config["cc_me"]
     mail.Attachments.Add(str(f))
     mail.Subject = "SSR"
