@@ -12,7 +12,7 @@ import sqlite3
 from datetime import datetime
 import win32com.client
 
-sys.path.append(str(Path(__file__).parent / "public"))
+sys.path.append(str(Path(__file__).parent.parent / "public"))
 import sales_history
 
 
@@ -149,7 +149,7 @@ def run():
     {config["me"]}<br>
     {config["signature"]}
     """
-#    mail.Send()
+    mail.Send()
     print("Email sent to Roberto")
 
     f = Path(DIR) / "SSR.xlsx"
