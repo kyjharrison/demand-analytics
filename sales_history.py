@@ -6,8 +6,11 @@ import pandas as pd
 import os
 import numpy as np
 from pathlib import Path
+import json
 
-CONN = sqlite3.connect(Path(__file__).parent / "bc-mirror/bc_mirror.db")
+with open(Path(__file__).parent.parent / "config.json") as f:
+    config = json.load(f)
+CONN_RAW = sqlite3.connect(config["DB_RAW"])
 
 def case_when(period_start):
     period_end = period_start + relativedelta(months=1)
@@ -51,7 +54,7 @@ def run(items=None, customer=None, location=None):
 
     query = " \n".join(lines)
 
-    df = pd.read_sql(query, CONN)
+    df = pd.read_sql(query, CONN_RAW)
 
     last_12m = df.columns[1:]
     df["12m_avg"] = df[last_12m].mean(axis=1).round(0).astype(int)

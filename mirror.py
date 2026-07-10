@@ -11,6 +11,8 @@ from logging.handlers import TimedRotatingFileHandler
 sys.path.insert(0, str(Path(__file__).parent.parent / "internal/bc-mirror"))
 from bc_keyvault_auth import build_bc_api_base_url, build_bc_odata_base_url, get_bc_connection
 from clean_tables import CLEAN_TABLES
+from alert import send_alert
+
 
 BC_CONFIG, BC_HEADERS = get_bc_connection()
 
@@ -19,6 +21,8 @@ with open(Path(__file__).parent.parent / "internal/config.json") as f:
 
 CONN_RAW = sqlite3.connect(config["DB_RAW"])
 CONN_CLEAN = sqlite3.connect(config["DB_CLEAN"])
+
+TIMEOUT = 90
 
 handler = TimedRotatingFileHandler(
     Path(__file__).parent.parent / "logs/mirror_refresh.log",
@@ -40,17 +44,16 @@ def parse_response(response):
 def call_api(endpoint, api_type):
     logging.info(f"Contacting server for endpoint: {endpoint} . . . ")
     if api_type == "base":
-        response = requests.get(f"{build_bc_api_base_url(BC_CONFIG)}/{endpoint}", headers=BC_HEADERS)
+        response = requests.get(f"{build_bc_api_base_url(BC_CONFIG)}/{endpoint}", headers=BC_HEADERS, timeout=TIMEOUT)
     elif api_type == "odata":
-        response = requests.get(f"{build_bc_odata_base_url(BC_CONFIG)}/{endpoint}", headers=BC_HEADERS)
+        response = requests.get(f"{build_bc_odata_base_url(BC_CONFIG)}/{endpoint}", headers=BC_HEADERS, timeout=TIMEOUT)
     else:
         logging.error('api_type must be defined as "base" or "odata"')
         sys.exit(1)
     if response.ok:
         return response
     else:
-        logging.error(f"{endpoint} returned {response.status_code}: {response.text}")
-        sys.exit(1)
+        raise requests.HTTPError(f"{endpoint} returned {response.status_code}: {response.text}") # raise error so that the per-endpoint try/except can catch it
 
 def initialize_table(api_type, refresh_mode, endpoint, id_column, secondary_id=None, tertiary_id=None, watermark_column=None, watermark_type=None, table_filter=None):
     data, _ = parse_response(call_api(f"{endpoint}?$top=1", api_type))
@@ -98,8 +101,7 @@ def refresh_table(schema):
         elif watermark_type == "string":
             data, next_link = parse_response(call_api(f"{endpoint}?$filter={watermark_column} ge '{watermark}'", api_type))
         else:
-            logging.error(f"Schema must define watermark_type. Please check {endpoint}.json and try again.")
-            sys.exit(1)
+            raise ValueError(f"Invalid watermark_type in {endpoint}.json. Expected 'date_integer' or 'string'.")
     elif table_filter:
         data, next_link = parse_response(call_api(f"{endpoint}?$filter={table_filter}", api_type))
     else:
@@ -122,7 +124,7 @@ def refresh_table(schema):
         CONN_RAW.commit()
         logging.info(f"{endpoint} written to file — page {i}")
         if next_link:
-            data, next_link = parse_response(requests.get(next_link, headers=BC_HEADERS))
+            data, next_link = parse_response(requests.get(next_link, headers=BC_HEADERS), timeout=TIMEOUT)
             continue
         else:
             break
@@ -137,16 +139,20 @@ def refresh_table(schema):
 
 def build_clean_mirror():
     start = datetime.now()
+    CONN_CLEAN.execute("ATTACH DATABASE ? AS raw", (config["DB_RAW"],))
     for table, query in CLEAN_TABLES.items():
         table_start = datetime.now()
         CONN_CLEAN.execute(f"DROP TABLE IF EXISTS {table}")
         CONN_CLEAN.execute(f"CREATE TABLE {table} AS {query}")
         logging.info(f"{table} refreshed in {datetime.now() - table_start}")
     CONN_CLEAN.commit()
+    CONN_CLEAN.execute("DETACH DATABASE raw")
     logging.info(f"clean_mirror.db rebuilt in {datetime.now() - start}")
 
 
 if __name__ == "__main__":
+
+    errors = []
 
     try:
         start = datetime.now()
@@ -172,6 +178,8 @@ if __name__ == "__main__":
         refresh = subparsers.add_parser("refresh")
         refresh.add_argument("--endpoint")
 
+        refresh = subparsers.add_parser("clean")
+        
         args = parser.parse_args()
 
         if args.mode == "test": 
@@ -195,7 +203,7 @@ if __name__ == "__main__":
                             refresh_table(schema)
                     except Exception as e:
                         logging.error(f"{file.stem} failed: {e}", exc_info=True)
-                        logging.error(e)
+                        errors.append(f"{file.stem}: {e}")
         
         logging.info(f"BC refresh completed in {datetime.now() - start}")
 
@@ -205,4 +213,10 @@ if __name__ == "__main__":
     
     except Exception as e:
         logging.critical(f"Script crashed: {e}", exc_info=True)
-        sys.exit(1)
+        errors.append(e)
+
+    finally:
+        if errors:
+            message = "\n\n".join(str(e) for e in errors)
+            send_alert(f"REFRESH — {len(errors)} errors", message)
+    

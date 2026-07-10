@@ -13,7 +13,7 @@ import json
 with open(Path(__file__).parent.parent / "internal/config.json") as f:
     config = json.load(f)
 
-CONN = sqlite3.connect(config["MIRROR_PATH"])
+CONN_RAW = sqlite3.connect(config["DB_RAW"])
 CUTOFF = (pd.Timestamp.now() - pd.offsets.BusinessDay(2)).strftime('%Y-%m-%d')
 
 query = """
@@ -50,7 +50,7 @@ HAVING Min(Registering_Date) < :CUTOFF
 ORDER BY 'Date Posted'
 """
 
-df = pd.read_sql(query, CONN, params={"CUTOFF": CUTOFF})
+df = pd.read_sql(query, CONN_RAW, params={"CUTOFF": CUTOFF})
 
 if not df.empty:
 
