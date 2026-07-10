@@ -1,8 +1,0 @@
-{
-  "endpoint": "items",
-  "api_type": "base",
-  "watermark_column": "lastModifiedDateTime",
-  "watermark_type": "date_integer",
-  "id_column": "id",
-  "secondary_id": null
-}
