@@ -10,7 +10,6 @@ from logging.handlers import TimedRotatingFileHandler
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "internal/bc-mirror"))
 from bc_keyvault_auth import build_bc_api_base_url, build_bc_odata_base_url, get_bc_connection
-from clean_tables import CLEAN_TABLES
 from alert import send_alert
 
 
@@ -19,8 +18,14 @@ BC_CONFIG, BC_HEADERS = get_bc_connection()
 with open(Path(__file__).parent.parent / "internal/config.json") as f:
     config = json.load(f)
 
-CONN_RAW = sqlite3.connect(config["DB_RAW"])
-CONN_CLEAN = sqlite3.connect(config["DB_CLEAN"])
+DIR_RAW = Path(config["DIR_RAW"])
+DIR_CLEAN = Path(config["DIR_CLEAN"])
+
+SCHEMA_RAW = DIR_RAW / "schema"
+CONN_RAW = sqlite3.connect(DIR_RAW / "bc_mirror.db")
+
+SQL_CLEAN = DIR_CLEAN / "sql"
+CONN_CLEAN = sqlite3.connect(DIR_CLEAN / "clean_mirror.db")
 
 TIMEOUT = 90
 
@@ -76,7 +81,7 @@ def initialize_table(api_type, refresh_mode, endpoint, id_column, secondary_id=N
         "tertiary_id": tertiary_id,
         "table_filter": table_filter
         }
-    with open(Path(config["SCHEMA_DIR"])/ f"{endpoint}.json", "w") as f:
+    with open(SCHEMA_RAW/ f"{endpoint}.json", "w") as f:
         json.dump(schema, f, indent=2)
 
 def refresh_table(schema): 
@@ -124,7 +129,7 @@ def refresh_table(schema):
         CONN_RAW.commit()
         logging.info(f"{endpoint} written to file — page {i}")
         if next_link:
-            data, next_link = parse_response(requests.get(next_link, headers=BC_HEADERS), timeout=TIMEOUT)
+            data, next_link = parse_response(requests.get(next_link, headers=BC_HEADERS, timeout=TIMEOUT))
             continue
         else:
             break
@@ -137,9 +142,16 @@ def refresh_table(schema):
     CONN_RAW.commit()
     logging.info(f"{endpoint} refreshed: {count} records updated in {datetime.now() - start}")
 
+def load_queries():
+    queries = {}
+    for p in SQL_CLEAN.glob("*.sql"):
+        queries[p.stem] = p.read_text()
+    return queries
+
 def build_clean_mirror():
     start = datetime.now()
-    CONN_CLEAN.execute("ATTACH DATABASE ? AS raw", (config["DB_RAW"],))
+    CONN_CLEAN.execute("ATTACH DATABASE ? AS raw", (str(DIR_RAW / "bc_mirror.db"),)) # can't use CONN_RAW because sqlite expects a string filepath not a connection object
+    CLEAN_TABLES = load_queries()
     for table, query in CLEAN_TABLES.items():
         table_start = datetime.now()
         CONN_CLEAN.execute(f"DROP TABLE IF EXISTS {table}")
@@ -148,7 +160,6 @@ def build_clean_mirror():
     CONN_CLEAN.commit()
     CONN_CLEAN.execute("DETACH DATABASE raw")
     logging.info(f"clean_mirror.db rebuilt in {datetime.now() - start}")
-
 
 if __name__ == "__main__":
 
@@ -178,7 +189,7 @@ if __name__ == "__main__":
         refresh = subparsers.add_parser("refresh")
         refresh.add_argument("--endpoint")
 
-        refresh = subparsers.add_parser("clean")
+        clean = subparsers.add_parser("clean")
         
         args = parser.parse_args()
 
@@ -190,13 +201,16 @@ if __name__ == "__main__":
         if args.mode == "new": 
             initialize_table(args.api_type, args.refresh_mode, args.endpoint, args.id_column, args.secondary_id, args.tertiary_id, args.watermark_column, args.watermark_type, args.table_filter) 
 
+        if args.mode == "clean":
+            build_clean_mirror()
+
         if args.mode == "refresh":  
             if args.endpoint:
-                with open(Path(config["SCHEMA_DIR"]) / f"{args.endpoint}.json") as f:
+                with open(SCHEMA_RAW / f"{args.endpoint}.json") as f:
                     schema = json.load(f)
                 refresh_table(schema)
             else:
-                for file in Path(config["SCHEMA_DIR"]).glob("*.json"):
+                for file in SCHEMA_RAW.glob("*.json"):
                     try:    
                         with open(file) as f:
                             schema = json.load(f)
@@ -204,12 +218,9 @@ if __name__ == "__main__":
                     except Exception as e:
                         logging.error(f"{file.stem} failed: {e}", exc_info=True)
                         errors.append(f"{file.stem}: {e}")
-        
-        logging.info(f"BC refresh completed in {datetime.now() - start}")
-
-        build_clean_mirror()
-
-        logging.info(f"Full refresh completed in {datetime.now() - start}")
+            logging.info(f"BC refresh completed in {datetime.now() - start}")
+            build_clean_mirror()
+            logging.info(f"Full refresh completed in {datetime.now() - start}")
     
     except Exception as e:
         logging.critical(f"Script crashed: {e}", exc_info=True)
