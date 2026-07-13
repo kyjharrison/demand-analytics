@@ -149,8 +149,8 @@ def run():
     {config["me"]}<br>
     {config["signature"]}
     """
-    mail.Send()
-    print("Email sent to Roberto")
+    mail.Display()
+    print("Email drafted to Roberto")
 
     f = Path(DIR) / "SSR.xlsx"
     with pd.ExcelWriter(f, engine='xlsxwriter') as writer:
