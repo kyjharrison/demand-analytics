@@ -2,7 +2,7 @@ WITH daily_balance AS(
 	SELECT 
 		Item_No,
 		Registering_Date,
-		SUM(Quantity) 
+		SUM(CAST(Qty_Base AS INT))
 			OVER (PARTITION BY Item_No ORDER BY Registering_Date ASC)
 			AS Balance,
 		ROW_NUMBER() 
@@ -14,7 +14,7 @@ WITH daily_balance AS(
 
 last_emptied AS(
 	SELECT Item_No, MAX(Registering_Date) as last_emptied_date FROM daily_balance
-	WHERE Balance = 0
+	WHERE Balance <= 0
 	GROUP BY Item_No
 ),
 
