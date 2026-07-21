@@ -11,6 +11,7 @@ from pathlib import Path
 import sqlite3
 from datetime import datetime
 import win32com.client
+import openpyxl # xlsxwriter output was not triggering OneDrive to sync updates
 
 sys.path.append(str(Path(__file__).parent.parent / "public"))
 import sales_history
@@ -102,15 +103,14 @@ def run():
     now = datetime.now()
 
     f = Path(DIR) / f"SSR {now.strftime('%y-%m-%d')} camel.xlsx"
-    with pd.ExcelWriter(f, engine='xlsxwriter') as writer:
+    with pd.ExcelWriter(f, engine='openpyxl') as writer:
         camel.to_excel(writer, index=False, sheet_name='SSR')
         containers.to_excel(writer, index=False, sheet_name='Containers')
-        
-        workbook = writer.book
-        num_format = workbook.add_format({'num_format': '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'})
-        
-        writer.sheets['SSR'].set_column(10, 17, None, num_format)
-
+        sheet = writer.sheets['SSR']
+        format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
+        for row in sheet.iter_rows(min_row=2, min_col=11, max_col=17):
+            for cell in row:
+                cell.number_format = format
     print(f"Camel SSR written to {f}")
 
     outlook = win32com.client.Dispatch("Outlook.Application")
@@ -129,13 +129,13 @@ def run():
     print("Email drafted to Camel team")
 
     f = Path(DIR) / f"SSR {now.strftime('%y-%m-%d')}.xlsx"
-    with pd.ExcelWriter(f, engine='xlsxwriter') as writer:
+    with pd.ExcelWriter(f, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='SSR')
-
-        workbook = writer.book
-        num_format = workbook.add_format({'num_format': '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'})
-        writer.sheets['SSR'].set_column(10, 17, None, num_format)
-
+        sheet = writer.sheets['SSR']
+        format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
+        for row in sheet.iter_rows(min_row=2, min_col=11, max_col=17):
+            for cell in row:
+                cell.number_format = format
     print(f"Historical snapshot SSR written to {f}")
 
     mail = outlook.CreateItem(0)
@@ -153,13 +153,13 @@ def run():
     print("Email drafted to Roberto")
 
     f = Path(DIR) / "SSR.xlsx"
-    with pd.ExcelWriter(f, engine='xlsxwriter') as writer:
+    with pd.ExcelWriter(f, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='SSR')
-
-        workbook = writer.book
-        num_format = workbook.add_format({'num_format': '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'})
-        writer.sheets['SSR'].set_column(10, 17, None, num_format)
-
+        sheet = writer.sheets['SSR']
+        format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
+        for row in sheet.iter_rows(min_row=2, min_col=11, max_col=17):
+            for cell in row:
+                cell.number_format = format
     print("Main SSR file updated")
 
 if __name__ == "__main__":
