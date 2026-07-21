@@ -12,9 +12,9 @@ from datetime import datetime
 import re
 import pyperclip
 
-IN_TRANSIT_FOLDER_PATH = pathlib.Path(r"C:\Users\Ky.Harrison\OneDrive - CGW Abrasives\Shared Documents\In Transit")
-DOWNLOADS_PATH = pathlib.Path(r"C:\Users\Ky.Harrison\Downloads")
-PO_CROSSWALK = pathlib.Path(r"C:\Users\Ky.Harrison\OneDrive - CGW Abrasives\PO0009468  PO0009470.xlsx")
+IN_TRANSIT_FOLDER_PATH = pathlib.Path(r"C:\Users\KyHarrison\OneDrive - CGW Abrasives\Shared Documents\In Transit")
+DOWNLOADS_PATH = pathlib.Path(r"C:\Users\KyHarrison\Downloads")
+PO_CROSSWALK = pathlib.Path(r"C:\Users\KyHarrison\OneDrive - CGW Abrasives\PO0009468  PO0009470.xlsx")
 
 ALIASES = {
     "External Document No": "External Document No.",
