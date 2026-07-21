@@ -12,18 +12,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "internal/bc-mirror"))
 from bc_keyvault_auth import build_bc_api_base_url, build_bc_odata_base_url, get_bc_connection
 from alert import send_alert
 
-
 BC_CONFIG, BC_HEADERS = get_bc_connection()
 
 with open(Path(__file__).parent.parent / "internal/config.json") as f:
     config = json.load(f)
 
 DIR_RAW = Path(config["DIR_RAW"])
-DIR_CLEAN = Path(config["DIR_CLEAN"])
-
 SCHEMA_RAW = DIR_RAW / "schema"
 CONN_RAW = sqlite3.connect(DIR_RAW / "bc_mirror.db")
 
+DIR_CLEAN = Path(config["DIR_CLEAN"])
 SQL_CLEAN = DIR_CLEAN / "sql"
 CONN_CLEAN = sqlite3.connect(DIR_CLEAN / "clean_mirror.db")
 
