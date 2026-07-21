@@ -70,6 +70,7 @@ def parse_camel_invoice(filepath):
         if df[col].isna().any():
             print(f"Warning: missing values in '{col}' column. Check file and rerun.")
             sys.exit(1)
+    df["Customer P/N"] = df["Customer P/N"].astype(str)
     df["po_stripped"] = df["External Document No."].apply(lambda x: re.sub(r"\D", "", x))
     df["po"] = df["po_stripped"].apply(lambda x: f"PO{x.zfill(7)}")
 
@@ -119,6 +120,7 @@ def filter_purlines(df, po_list):
     return df
 
 def fill_qties(group, remaining):
+    group["Qty. to Receive"] = 0 # zero everything to start so that when the loop breaks with open lines remaining, those are already zeroed
     open_lines = group[group["Outstanding Quantity"]>0].sort_values("Line No.")
     if open_lines.empty:
         group.loc[group["Line No."].idxmax(), "Qty. to Receive"] = remaining
@@ -175,15 +177,14 @@ def update_purlines(aggregated_invoice, filtered_purlines): # dict, df
 
     return pd.concat(lines) # returns df
 
-def summarize_for_transfer(aggregated_invoice_dict):
-    invoice = pd.Series(aggregated_invoice_dict).reset_index()
-    invoice.columns = ["po_item", "qty"]
-    invoice[["po", "item"]] = invoice["po_item"].str.split("|", expand=True)
-    transfer = (invoice
-            .groupby("item")["qty"]
-            .sum()
-            .sort_index()
-        )
+# uses output from purlines so that item numbers will always match the hyphenation in BC
+def summarize_for_transfer(lines):
+    received = lines[lines["Qty. to Receive"] > 0]
+    transfer = (received
+        .groupby("No.")["Qty. to Receive"]
+        .sum()
+        .sort_index()
+    )
     return transfer.to_dict()
 
 def main():
@@ -217,7 +218,7 @@ def main():
     print(transfer_container)
     input("Container number copied. Press Enter to copy items to clipboard...")
 
-    transfer = summarize_for_transfer(aggregated_invoice)
+    transfer = summarize_for_transfer(lines)
 
     pyperclip.copy("\n".join(transfer))
     input("Items list copied. Press Enter to continue...")
