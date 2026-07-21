@@ -10,7 +10,7 @@ import json
 
 with open(Path(__file__).parent.parent / "internal/config.json") as f:
     config = json.load(f)
-CONN_RAW = sqlite3.connect(config["DB_RAW"])
+CONN_RAW = sqlite3.connect(Path(config["DIR_RAW"]) / "bc_mirror.db")
 
 def case_when(period_start):
     period_end = period_start + relativedelta(months=1)
