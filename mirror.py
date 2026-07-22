@@ -17,13 +17,13 @@ BC_CONFIG, BC_HEADERS = get_bc_connection()
 with open(Path(__file__).parent.parent / "internal/config.json") as f:
     config = json.load(f)
 
-DIR_RAW = Path(config["DIR_RAW"])
-SCHEMA_RAW = DIR_RAW / "schema"
-CONN_RAW = sqlite3.connect(DIR_RAW / "bc_mirror.db")
+MIRROR_DIR = Path(config["MIRROR_DIR"])
 
-DIR_CLEAN = Path(config["DIR_CLEAN"])
-SQL_CLEAN = DIR_CLEAN / "sql"
-CONN_CLEAN = sqlite3.connect(DIR_CLEAN / "clean_mirror.db")
+SCHEMA_RAW = MIRROR_DIR / "schema"
+CONN_RAW = sqlite3.connect(MIRROR_DIR / "bc_mirror.db")
+
+SQL_CLEAN = MIRROR_DIR / "sql"
+CONN_CLEAN = sqlite3.connect(MIRROR_DIR / "clean_mirror.db")
 
 TIMEOUT = 90
 
@@ -148,7 +148,7 @@ def load_queries():
 
 def build_clean_mirror():
     start = datetime.now()
-    CONN_CLEAN.execute("ATTACH DATABASE ? AS raw", (str(DIR_RAW / "bc_mirror.db"),)) # can't use CONN_RAW because sqlite expects a string filepath not a connection object
+    CONN_CLEAN.execute("ATTACH DATABASE ? AS raw", (str(MIRROR_DIR / "bc_mirror.db"),)) # can't use CONN_RAW because sqlite expects a string filepath not a connection object
     CLEAN_TABLES = load_queries()
     for table, query in CLEAN_TABLES.items():
         table_start = datetime.now()
