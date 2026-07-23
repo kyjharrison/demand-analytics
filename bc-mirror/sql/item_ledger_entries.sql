@@ -6,8 +6,6 @@ SELECT
 	Document_No as Document, 
 	Document_Line_No as Line, 
 	Item_No as Item, 
-	Item_Description as Description, 
-	Description as Description_2, 
 	Location_Code as Location, 
 	Quantity as Qty, 
 	Unit_of_Measure_Code as UoM, 
