@@ -56,7 +56,7 @@ def run(items=None, customer=None, location=None):
 
     df = pd.read_sql(query, CONN_CLEAN)
 
-    last_12m = df.columns[1:]
+    last_12m = df.columns[7:] # TODO fix to non-positional
     df["12m_avg"] = df[last_12m].mean(axis=1).round(0).astype(int)
     last_3m = last_12m[-3:]
     df["3m_avg"] = df[last_3m].mean(axis=1).round(0).astype(int)
@@ -104,7 +104,7 @@ if __name__ == "__main__":
                 {'header': col} for col in df.columns[1:]
             ]
         })
-        worksheet.set_column(1, len(df.columns)-3, None, num_format)
+        worksheet.set_column(7, len(df.columns)-3, None, num_format) # TODO fix to non-positional
         worksheet.set_column(len(df.columns)-1, len(df.columns)-1, None, pct_format)
 
     print(f"Completed in {datetime.now() - now}")
