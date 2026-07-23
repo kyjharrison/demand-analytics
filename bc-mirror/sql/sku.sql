@@ -1,15 +1,15 @@
 SELECT
-    Item_No AS Item, 
-    Location_Code AS Location, 
-    Shelf_No AS Shelf_No, 
-    Unit_Cost, 
-    Replenishment_System, 
-    Vendor_No AS Vendor, 
-    Lead_Time_Calculation AS Lead_Time,
-    Vendor_Item_No, 
-    Assembly_Policy,
-    Reordering_Policy,
-    Safety_Lead_Time, 
-    Minimum_Order_Quantity AS MOQ, 
-    Order_Multiple AS Multiple
+    Item_No AS item, 
+    Location_Code AS location, 
+    Shelf_No AS shelf, 
+    Unit_Cost AS unit_cost, 
+    Replenishment_System AS replenishment_system, 
+    Vendor_No AS vendor, 
+    Lead_Time_Calculation AS lead_time,
+    Vendor_Item_No AS vendor_item, 
+    Assembly_Policy AS assembly_policy,
+    Reordering_Policy AS reordering_policy,
+    Safety_Lead_Time AS safety_lead_time, 
+    Minimum_Order_Quantity AS moq, 
+    Order_Multiple AS multiple
 FROM raw.Stockkeeping_Unit_Card_Excel

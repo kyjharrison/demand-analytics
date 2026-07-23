@@ -1,11 +1,11 @@
 SELECT 
-    ItemCode AS Item,
-    ItemDesc AS Description,
-    ItemDesc2 AS Description2,
-    ProductLine AS Product,
-    SubProduct AS Subproduct,
-    ItemSupplierCode AS Vendor,
-    LifeCycle AS LC,
-    ItemStockUOM AS UoM,
-    CostPerUnit AS UnitCost
+    ItemCode AS item,
+    ItemDesc AS description,
+    ItemDesc2 AS description2,
+    ProductLine AS product,
+    SubProduct AS subproduct,
+    ItemSupplierCode AS vendor,
+    LifeCycle AS lc,
+    ItemStockUOM AS uom,
+    CostPerUnit AS unit_cost
 FROM raw.CGWItem
