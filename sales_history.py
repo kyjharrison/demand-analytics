@@ -10,15 +10,15 @@ import json
 
 with open(Path(__file__).parent.parent / "internal/config.json") as f:
     config = json.load(f)
-CONN_RAW = sqlite3.connect(Path(config["DIR_RAW"]) / "bc_mirror.db")
+CONN_CLEAN = sqlite3.connect(Path(config["MIRROR_DIR"]) / "clean_mirror.db")
 
 def case_when(period_start):
     period_end = period_start + relativedelta(months=1)
     label = period_start.strftime("%b %Y")
     return (
-        f"SUM(CASE WHEN headers.Posting_Date >= '{period_start.strftime('%Y-%m-%d')}' "
-        f"AND headers.Posting_Date < '{period_end.strftime('%Y-%m-%d')}' "
-        f"THEN lines.Quantity ELSE 0 END) AS \"{label}\""
+        f"SUM(CASE WHEN posting_date >= '{period_start.strftime('%Y-%m-%d')}' "
+        f"AND posting_date < '{period_end.strftime('%Y-%m-%d')}' "
+        f"THEN qty ELSE 0 END) AS \"{label}\""
     )
 
 def run(items=None, customer=None, location=None):
@@ -29,32 +29,32 @@ def run(items=None, customer=None, location=None):
     end = start + relativedelta(months=periods)
 
     lines = []
-    lines.append("SELECT lines.No, ")
+    lines.append("SELECT item, i.description, i.description2, i.product, i.subproduct, i.vendor, i.lc, ")
 
     dates = []
     for i in range(periods):
         dates.append(case_when(start + relativedelta(months=i)))
     lines.append(", ".join(dates))
 
-    lines.append("FROM Posted_Sales_Invoice_Lines AS lines")
-    lines.append("JOIN Posted_Sales_Invoices_Header AS headers")
-    lines.append("ON lines.Document_No = headers.No")
-    lines.append(f"WHERE headers.Posting_Date >= '{start.strftime('%Y-%m-%d')}'")
-    lines.append(f"AND headers.Posting_Date < '{end.strftime('%Y-%m-%d')}'")
-    lines.append("AND lines.Type = 'Item'")
+    lines.append("FROM posted_sales_invoices psi")
+    lines.append("JOIN items i")
+    lines.append("USING (item)")
+    lines.append(f"WHERE psi.posting_date >= '{start.strftime('%Y-%m-%d')}'")
+    lines.append(f"AND psi.posting_date < '{end.strftime('%Y-%m-%d')}'")
+    lines.append("AND psi.type = 'Item'")
     if items:
         items = items.split("|") 
         item_list = ", ".join(f"'{i}'" for i in items)
-        lines.append(f"AND lines.No IN ({item_list})")
+        lines.append(f"AND item IN ({item_list})")
     if customer:
-        lines.append(f"AND lines.Sell_to_Customer_No = '{customer}'")
+        lines.append(f"AND psi.customer = '{customer}'")
     if location:
-        lines.append(f"AND headers.Location_Code = '{location}'")
-    lines.append("GROUP BY lines.No")
+        lines.append(f"AND psi.location = '{location}'")
+    lines.append("GROUP BY item, i.description, i.description2, i.product, i.subproduct, i.vendor, i.lc")
 
     query = " \n".join(lines)
 
-    df = pd.read_sql(query, CONN_RAW)
+    df = pd.read_sql(query, CONN_CLEAN)
 
     last_12m = df.columns[1:]
     df["12m_avg"] = df[last_12m].mean(axis=1).round(0).astype(int)
