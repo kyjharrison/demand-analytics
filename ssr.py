@@ -74,12 +74,12 @@ def ssr():
             """, CONN_RAW), on="Item", how="left")
 
     history = sales_history.run()
-    last_12m = history.columns[1:13]
+    last_12m = history.columns[7:19] # TODO fix to non-positional
     history["Last 12mo"] = history[last_12m].sum(axis=1)
-    last_6m = history.columns[7:13]
+    last_6m = history.columns[13:19] # TODO fix to non-positional
     history["Last 6mo"] = history[last_6m].sum(axis=1)
 
-    df = df.merge(history[["No", "Last 12mo", "Last 6mo"]], left_on="Item", right_on="No", how="left").drop(columns="No")
+    df = df.merge(history[["item", "Last 12mo", "Last 6mo"]], left_on="Item", right_on="item", how="left").drop(columns="item")
     df = df[["Item", "Description", "Description 2", "Product Code", "Subproduct", "UoM", "Lifecycle", "Entity", "Vendor", "Unit Cost", "Qty OH", "Qty on PO", "Qty on SO", "Qty on Blanket SO", "Qty in Transit", "Last 12mo", "Last 6mo"]]
     df[["Qty OH", "Qty on PO", "Qty on SO", "Qty on Blanket SO", "Qty in Transit", "Last 12mo", "Last 6mo"]] = df[["Qty OH", "Qty on PO", "Qty on SO", "Qty on Blanket SO", "Qty in Transit", "Last 12mo", "Last 6mo"]].round(0)
     df = df.sort_values('Last 12mo', ascending=False)
