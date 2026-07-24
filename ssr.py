@@ -20,7 +20,7 @@ import sales_history
 with open(Path(__file__).parent / "config.json") as f:
     config = json.load(f)
 
-CONN_RAW = sqlite3.connect(Path(config["DIR_RAW"]) / "bc_mirror.db")
+CONN_RAW = sqlite3.connect(Path(config["MIRROR_DIR"]) / "bc_mirror.db")
 DIR = config["SSR_DIR"] 
 
 def ssr():
