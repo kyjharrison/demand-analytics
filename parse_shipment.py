@@ -23,8 +23,6 @@ ALIASES = {
 
 SHIP_BUFFER_DAYS = 7
 TRANSIT_DAYS = 42
-CUTOFF = pd.Timestamp.today().normalize() + pd.Timedelta(days=TRANSIT_DAYS)
-
 
 def find_invoice(container):
     while True:
@@ -65,7 +63,7 @@ def parse_camel_invoice(filepath):
     shipment_date_raw = df["Date Shipped "].iloc[0]
     shipment_date_norm = shipment_date_raw.replace('/', '.').replace('-', '.')
     date_format = "%m.%d.%Y" if len(shipment_date_norm.split(".")[-1]) == 4 else "%m.%d.%y"
-    shipment_date = datetime.strptime(shipment_date_norm, date_format).strftime("%Y-%m-%d")
+    shipment_date = pd.Timestamp.strptime(shipment_date_norm, date_format)
 
     for col in ["External Document No.", "Customer P/N", "Qty Shipped "]:
         if df[col].isna().any():
@@ -108,13 +106,13 @@ def find_purlines():
     return df
 
 # filters to only lines on this container and/or past due
-def filter_purlines(df, po_list):
-    
+def filter_purlines(df, po_list, shipment_date):
+
     df["Expected Receipt Date"] = pd.to_datetime(df["Expected Receipt Date"])
     df["Ship Date"] = pd.to_datetime(df["Ship Date"])
 
     shipped = df["Document No."].isin(po_list)
-    past_due = (df["Expected Receipt Date"] < CUTOFF) & (df["Outstanding Quantity"] > 0)
+    past_due = (df["Ship Date"] < shipment_date) & (df["Outstanding Quantity"] > 0)
     
     df = df[shipped | past_due]
     df["po_item_key"] = df.apply(lambda row: f"{row['Document No.']}|{row['No.'].replace('-','')}", axis=1)
@@ -140,16 +138,16 @@ def fill_qties(group, remaining):
 
 def update_date(df):
     df.loc[:, "Ship Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=SHIP_BUFFER_DAYS)
-    df.loc[:, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=SHIP_BUFFER_DAYS + TRANSIT_DAYS)
+    df.loc[:, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=SHIP_BUFFER_DAYS + TRANSIT_DAYS) # programmatic update doesn't trigger recalc
     return df
 
-def update_purlines(aggregated_invoice, filtered_purlines): # dict, df
+def update_purlines(aggregated_invoice, filtered_purlines, shipment_date): # dict, df
     
     lines = []
 
     # split df into subsets
     shipped = filtered_purlines["po_item_key"].isin(aggregated_invoice)
-    past_due = filtered_purlines["Expected Receipt Date"] < CUTOFF
+    past_due = (filtered_purlines["Ship Date"] < shipment_date) & (filtered_purlines["Outstanding Quantity"] > 0)
 
     shipped_only = filtered_purlines[shipped & ~past_due].copy() # what's on the container and not past_due
     zero_only = filtered_purlines[~shipped & ~past_due].copy() # other lines on POs this invoice touches, which need to be zeroed out and not received
@@ -195,8 +193,8 @@ def main():
     else:
         container = sys.argv[1]
     aggregated_invoice, po_list, filter_string, shipment_date = parse_camel_invoice(find_invoice(container))
-    filtered_purlines = filter_purlines(find_purlines(), po_list)
-    lines = update_purlines(aggregated_invoice, filtered_purlines)
+    filtered_purlines = filter_purlines(find_purlines(), po_list, shipment_date)
+    lines = update_purlines(aggregated_invoice, filtered_purlines, shipment_date)
     invoice = set(aggregated_invoice)
     purlines = set(filtered_purlines["po_item_key"])
     missing = invoice - purlines
