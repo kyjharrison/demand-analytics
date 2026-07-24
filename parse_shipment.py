@@ -63,7 +63,7 @@ def parse_camel_invoice(filepath):
     shipment_date_raw = df["Date Shipped "].iloc[0]
     shipment_date_norm = shipment_date_raw.replace('/', '.').replace('-', '.')
     date_format = "%m.%d.%Y" if len(shipment_date_norm.split(".")[-1]) == 4 else "%m.%d.%y"
-    shipment_date = pd.Timestamp.strptime(shipment_date_norm, date_format)
+    shipment_date = pd.to_datetime(shipment_date_norm, format=date_format)
 
     for col in ["External Document No.", "Customer P/N", "Qty Shipped "]:
         if df[col].isna().any():
