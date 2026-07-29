@@ -30,7 +30,7 @@ TIMEOUT = 90
 handler = TimedRotatingFileHandler(
     Path(__file__).parent.parent / "logs/mirror_refresh.log",
     when="midnight",
-    backupCount=14,
+    backupCount=5,
 )
 
 handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
