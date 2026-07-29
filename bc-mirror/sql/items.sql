@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS items;
+CREATE TABLE items AS
 SELECT 
     ItemCode AS item,
     ItemDesc AS description,
@@ -8,4 +10,4 @@ SELECT
     LifeCycle AS lc,
     ItemStockUOM AS uom,
     CostPerUnit AS unit_cost
-FROM raw.CGWItem
+FROM raw.CGWItem;

@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS skus;
+CREATE TABLE skus AS
 SELECT
     Item_No AS item, 
     Location_Code AS location, 
@@ -12,4 +14,4 @@ SELECT
     Safety_Lead_Time AS safety_lead_time, 
     Minimum_Order_Quantity AS moq, 
     Order_Multiple AS multiple
-FROM raw.Stockkeeping_Unit_Card_Excel
+FROM raw.Stockkeeping_Unit_Card_Excel;
