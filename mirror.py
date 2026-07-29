@@ -140,22 +140,13 @@ def refresh_table(schema):
     CONN_RAW.commit()
     logging.info(f"{endpoint} refreshed: {count} records updated in {datetime.now() - start}")
 
-def load_queries():
-    queries = {}
-    for p in SQL_CLEAN.glob("*.sql"):
-        queries[p.stem] = p.read_text()
-    return queries
-
 def build_clean_mirror():
     start = datetime.now()
     CONN_CLEAN.execute("ATTACH DATABASE ? AS raw", (str(MIRROR_DIR / "bc_mirror.db"),)) # can't use CONN_RAW because sqlite expects a string filepath not a connection object
-    CLEAN_TABLES = load_queries()
-    for table, query in CLEAN_TABLES.items():
+    for p in SQL_CLEAN.glob("*.sql"): # p is the path object for the sql file right now
         table_start = datetime.now()
-        CONN_CLEAN.execute(f"DROP TABLE IF EXISTS {table}")
-        CONN_CLEAN.execute(f"CREATE TABLE {table} AS {query}")
-        logging.info(f"{table} refreshed in {datetime.now() - table_start}")
-    CONN_CLEAN.commit()
+        CONN_CLEAN.executescript(p.read_text())
+        logging.info(f"{p.stem} refreshed in {datetime.now() - table_start}")
     CONN_CLEAN.execute("DETACH DATABASE raw")
     logging.info(f"clean_mirror.db rebuilt in {datetime.now() - start}")
 
