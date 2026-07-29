@@ -16,7 +16,7 @@ try:
 	with open(Path(__file__).parent.parent / "internal/config.json") as f:
 		config = json.load(f)
 
-	CONN_RAW = sqlite3.connect(config["DB_RAW"])
+	CONN_RAW = sqlite3.connect(Path(config["MIRROR_DIR"]) / "bc_mirror.db")
 	CUTOFF = (pd.Timestamp.now() - pd.offsets.BusinessDay(2)).strftime('%Y-%m-%d')
 
 	query = """
