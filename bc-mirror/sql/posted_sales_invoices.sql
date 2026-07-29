@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS posted_sales_invoices (
     qty REAL, 
     uom TEXT, 
     price REAL, 
-    amt REAL
+    amt REAL,
+    PRIMARY KEY (invoice, line)
 );
 INSERT OR REPLACE INTO posted_sales_invoices
     SELECT 
@@ -36,7 +37,6 @@ INSERT OR REPLACE INTO posted_sales_invoices
         l.Unit_of_Measure_Code AS uom,
         l.Unit_Price AS price,
         l.Amount AS amt
-        PRIMARY KEY (invoice, line)
     FROM raw.Posted_Sales_Invoice_Lines l
     LEFT JOIN raw.Posted_Sales_Invoices_Header h
         ON l.Document_No = h.No
