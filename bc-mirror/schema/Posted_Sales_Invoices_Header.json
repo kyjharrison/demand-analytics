@@ -1,8 +1,0 @@
-{
-  "endpoint": "Posted_Sales_Invoices_Header",
-  "api_type": "odata",
-  "watermark_column": "No",
-  "watermark_type": "string",
-  "id_column": "No",
-  "secondary_id": null
-}
