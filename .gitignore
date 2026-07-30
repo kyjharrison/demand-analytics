@@ -1,7 +1,8 @@
-bc-mirror/bc_keyvault_auth.py
+bc_keyvault_auth.py
 __pycache__/
 *.pyc
 *.db
+*.db-journal
 *.xlsx
 .env
 venv/
