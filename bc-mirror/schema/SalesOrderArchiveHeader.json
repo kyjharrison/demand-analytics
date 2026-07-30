@@ -1,0 +1,11 @@
+{
+  "endpoint": "SalesOrderArchiveHeader",
+  "api_type": "odata",
+  "refresh_mode": "upsert",
+  "watermark_column": "Date_Archived",
+  "watermark_type": "date_integer",
+  "id_column": "No",
+  "secondary_id": "Version_No",
+  "tertiary_id": "Doc_No_Occurrence",
+  "table_filter": null
+}

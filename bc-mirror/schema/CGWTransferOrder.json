@@ -1,0 +1,10 @@
+{
+  "endpoint": "CGWTransferOrder",
+  "api_type": "odata",
+  "refresh_mode": "truncate",
+  "watermark_column": null,
+  "watermark_type": null,
+  "id_column": "TransferOrderNumber",
+  "secondary_id": "TransferOrderLineNumber",
+  "table_filter": null
+}
