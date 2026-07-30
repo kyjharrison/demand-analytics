@@ -1,5 +1,8 @@
 pandas
 numpy
-python-dateutil
 requests
+openpyxl
 xlsxwriter
+python-dateutil
+pyperclip
+pywin32
