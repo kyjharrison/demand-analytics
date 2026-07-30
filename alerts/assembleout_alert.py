@@ -10,7 +10,7 @@ from pathlib import Path
 import win32com.client
 import json
 
-from alert import send_alert
+from public.alerts.error_alert import send_alert
 
 try:
 	with open(Path(__file__).parent.parent / "internal/config.json") as f:

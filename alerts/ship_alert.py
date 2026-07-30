@@ -1,4 +1,6 @@
 """
+NOT WORKING QUERY NEEDS REFACTORING WITH CLEAN DB
+
 Checks the SHIP bin for any inventory that's been sitting for more than 2 days. 
 If any found, emails a list to the shipping manager
 Otherwise, emails me a confirmation of nothing found. 
