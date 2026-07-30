@@ -72,8 +72,8 @@ try:
 		This is an automated alert that the following inventory appears to have been in ASSEMBLEOUT for more than 2 days.<br><br>
 		{table_html} <br>
 		Thank you,<br>
-		{config["me"]}<br>
-		{config["signature"]}
+		{config["name"]}<br>
+		{config["title"]}
 		"""
 
 		mail.Send()

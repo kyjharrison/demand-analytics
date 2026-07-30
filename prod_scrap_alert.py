@@ -37,8 +37,8 @@ try:
         This is an automated alert that the following inventory is in PRODUCTION SCRAP.<br><br>
         {table_html} <br>
         Thank you,<br>
-        {config["me"]}<br>
-        {config["signature"]}
+        {config["name"]}<br>
+        {config["title"]}
         """
         mail.Send()
 

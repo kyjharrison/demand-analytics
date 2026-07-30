@@ -70,8 +70,8 @@ if not df.empty:
 	Here's a test load of what the SHIP bin query is returning. The dates are the original dates it went out of alignment<br><br>
 	{table_html} <br>
 	Thank you,<br>
-	{config["me"]}<br>
-	{config["signature"]}
+	{config["name"]}<br>
+	{config["title"]}
 	"""
 
 	mail.Display()
