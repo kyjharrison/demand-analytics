@@ -5,7 +5,7 @@ import win32com.client
 from pathlib import Path
 import json
 
-with open(Path(__file__).parent.parent / "internal/config.json") as f:
+with open(Path(__file__).parent.parent / "config.json") as f:
     config = json.load(f)
 
 def send_alert(subject, message):

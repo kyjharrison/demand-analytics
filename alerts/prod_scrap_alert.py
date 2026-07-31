@@ -8,12 +8,12 @@ import pandas as pd
 from pathlib import Path
 import win32com.client
 import json
-from public.alerts.error_alert import send_alert
+from error_alert import send_alert
 
-with open(Path(__file__).parent.parent / "internal/config.json") as f:
+with open(Path(__file__).parent.parent / "config.json") as f:
     config = json.load(f)
 
-CONN_CLEAN = sqlite3.connect(config["DB_CLEAN"])
+CONN_CLEAN = sqlite3.connect(Path(config["MIRROR_DIR"]) / "clean_mirror.db")
 
 query = """
     SELECT * from bin_contents

@@ -10,10 +10,10 @@ from pathlib import Path
 import win32com.client
 import json
 
-from public.alerts.error_alert import send_alert
+from error_alert import send_alert
 
 try:
-	with open(Path(__file__).parent.parent / "internal/config.json") as f:
+	with open(Path(__file__).parent.parent / "config.json") as f:
 		config = json.load(f)
 
 	CONN_RAW = sqlite3.connect(Path(config["MIRROR_DIR"]) / "bc_mirror.db")

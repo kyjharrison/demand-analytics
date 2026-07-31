@@ -8,7 +8,7 @@ import numpy as np
 from pathlib import Path
 import json
 
-with open(Path(__file__).parent.parent / "internal/config.json") as f:
+with open(Path(__file__).parent / "config.json") as f:
     config = json.load(f)
 CONN_CLEAN = sqlite3.connect(Path(config["MIRROR_DIR"]) / "clean_mirror.db")
 

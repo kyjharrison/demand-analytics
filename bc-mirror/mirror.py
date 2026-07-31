@@ -7,14 +7,14 @@ from datetime import datetime
 from pathlib import Path
 import logging
 from logging.handlers import TimedRotatingFileHandler
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "internal/bc-mirror"))
 from bc_keyvault_auth import build_bc_api_base_url, build_bc_odata_base_url, get_bc_connection
-from alert import send_alert
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "alerts"))
+from error_alert import send_alert
 
 BC_CONFIG, BC_HEADERS = get_bc_connection()
 
-with open(Path(__file__).parent.parent / "internal/config.json") as f:
+with open(Path(__file__).parent.parent / "config.json") as f:
     config = json.load(f)
 
 MIRROR_DIR = Path(config["MIRROR_DIR"])
