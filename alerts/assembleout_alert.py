@@ -69,7 +69,7 @@ try:
 		mail.CC = f"{config["production_manager"]}; {config["cc_me"]}"
 		mail.Subject = "ASSEMBLEOUT"
 		mail.HTMLBody = f"""Good morning, <br><br>
-		This is an automated alert that the following inventory appears to have been in ASSEMBLEOUT for more than 2 days.<br><br>
+		Please check on these items as they have been in ASSEMBLEOUT for more than 2 days.<br><br>
 		{table_html} <br>
 		Thank you,<br>
 		{config["name"]}<br>
