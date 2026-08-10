@@ -12,6 +12,22 @@ from bc_keyvault_auth import build_bc_api_base_url, build_bc_odata_base_url, get
 sys.path.insert(0, str(Path(__file__).parent.parent / "alerts"))
 from error_alert import send_alert
 
+# set up logger
+handler = TimedRotatingFileHandler(
+    Path(__file__).parent.parent / "logs/mirror_refresh.log",
+    when="midnight",
+    backupCount=10,
+)
+handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+logging.basicConfig(level=logging.INFO, handlers=[handler])
+
+# exit if outside business hours
+now = datetime.now()
+if now.weekday() >= 5 or not (6 <= now.hour < 20):
+    logging.info("Script triggered outside working hours. Exiting...")
+    sys.exit(0)
+
+
 BC_CONFIG, BC_HEADERS = get_bc_connection()
 
 with open(Path(__file__).parent.parent / "config.json") as f:
@@ -26,15 +42,6 @@ SQL_CLEAN = MIRROR_DIR / "sql"
 CONN_CLEAN = sqlite3.connect(MIRROR_DIR / "clean_mirror.db")
 
 TIMEOUT = 90
-
-handler = TimedRotatingFileHandler(
-    Path(__file__).parent.parent / "logs/mirror_refresh.log",
-    when="midnight",
-    backupCount=5,
-)
-
-handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-logging.basicConfig(level=logging.INFO, handlers=[handler])
 
 def parse_response(response):
     data_raw = response.json()
