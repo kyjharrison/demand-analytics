@@ -155,7 +155,7 @@ def build_clean_mirror():
         CONN_CLEAN.executescript(p.read_text())
         logging.info(f"{p.stem} refreshed in {datetime.now() - table_start}")
     CONN_CLEAN.execute("DETACH DATABASE raw")
-    logging.info(f"clean_mirror.db rebuilt in {datetime.now() - start}")
+    logging.info(f"clean_mirror.db refreshed in {datetime.now() - start}")
 
 if __name__ == "__main__":
 
@@ -214,7 +214,7 @@ if __name__ == "__main__":
                     except Exception as e:
                         logging.error(f"{file.stem} failed: {e}", exc_info=True)
                         errors.append(f"{file.stem}: {e}")
-            logging.info(f"BC refresh completed in {datetime.now() - start}")
+            logging.info(f"bc_mirror.db refreshed in {datetime.now() - start}")
             build_clean_mirror()
             logging.info(f"Full refresh completed in {datetime.now() - start}")
     
