@@ -65,8 +65,11 @@ def call_api(endpoint, api_type):
     else:
         raise requests.HTTPError(f"{endpoint} returned {response.status_code}: {response.text}") # raise error so that the per-endpoint try/except can catch it
 
-def initialize_table(api_type, refresh_mode, endpoint, id_column, secondary_id=None, tertiary_id=None, watermark_column=None, watermark_type=None, table_filter=None):
-    data, _ = parse_response(call_api(f"{endpoint}?$top=1", api_type))
+def initialize_table(api_type, refresh_mode, endpoint, id_column, secondary_id=None, tertiary_id=None, watermark_column=None, watermark_type=None, query_param=None):
+    if query_param:
+        data, _ = parse_response(call_api(f"{endpoint}?{query_param}&$top=1", api_type))
+    else:
+        data, _ = parse_response(call_api(f"{endpoint}?$top=1", api_type))
     keys = data[0].keys()
     if tertiary_id:
         fields = ", ".join(keys) + f", PRIMARY KEY ({id_column}, {secondary_id}, {tertiary_id})"
@@ -84,7 +87,7 @@ def initialize_table(api_type, refresh_mode, endpoint, id_column, secondary_id=N
         "id_column": id_column, 
         "secondary_id": secondary_id,
         "tertiary_id": tertiary_id,
-        "table_filter": table_filter
+        "query_param": query_param
         }
     with open(SCHEMA_RAW/ f"{endpoint}.json", "w") as f:
         json.dump(schema, f, indent=2)
@@ -98,7 +101,7 @@ def refresh_table(schema):
     refresh_mode = schema.get("refresh_mode")
     watermark_column = schema["watermark_column"]
     watermark_type = schema["watermark_type"]
-    table_filter = schema.get("table_filter")
+    query_param = schema.get("query_param")
 
     watermark = None
     if watermark_column:
@@ -112,8 +115,8 @@ def refresh_table(schema):
             data, next_link = parse_response(call_api(f"{endpoint}?$filter={watermark_column} ge '{watermark}'", api_type))
         else:
             raise ValueError(f"Invalid watermark_type in {endpoint}.json. Expected 'date_integer' or 'string'.")
-    elif table_filter:
-        data, next_link = parse_response(call_api(f"{endpoint}?$filter={table_filter}", api_type))
+    elif query_param:
+        data, next_link = parse_response(call_api(f"{endpoint}?{query_param}", api_type))
     else:
         data, next_link = parse_response(call_api(endpoint, api_type))
     keys = data[0].keys()
@@ -180,7 +183,7 @@ if __name__ == "__main__":
         new.add_argument("--tertiary_id")
         new.add_argument("--watermark_column") # omit for full refresh every time
         new.add_argument("--watermark_type") # omit for full refresh every time
-        new.add_argument("--table_filter") # DO NOT COMBINE WITH WATERMARK
+        new.add_argument("--query_param") # DO NOT COMBINE WITH WATERMARK
 
         refresh = subparsers.add_parser("refresh")
         refresh.add_argument("--endpoint")
@@ -195,7 +198,7 @@ if __name__ == "__main__":
                 print(json.dumps(line))
 
         if args.mode == "new": 
-            initialize_table(args.api_type, args.refresh_mode, args.endpoint, args.id_column, args.secondary_id, args.tertiary_id, args.watermark_column, args.watermark_type, args.table_filter) 
+            initialize_table(args.api_type, args.refresh_mode, args.endpoint, args.id_column, args.secondary_id, args.tertiary_id, args.watermark_column, args.watermark_type, args.query_param) 
 
         if args.mode == "clean":
             build_clean_mirror()

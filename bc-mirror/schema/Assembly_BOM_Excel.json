@@ -7,5 +7,5 @@
   "id_column": "Parent_Item_No",
   "secondary_id": "Line_No",
   "tertiary_id": null,
-  "table_filter": null
+  "query_param": null
 }

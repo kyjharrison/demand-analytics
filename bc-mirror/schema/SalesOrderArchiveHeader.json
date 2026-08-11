@@ -7,5 +7,5 @@
   "id_column": "No",
   "secondary_id": "Version_No",
   "tertiary_id": "Doc_No_Occurrence",
-  "table_filter": null
+  "query_param": null
 }

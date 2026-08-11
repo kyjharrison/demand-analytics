@@ -7,5 +7,5 @@
   "id_column": "Entry_No",
   "secondary_id": null,
   "tertiary_id": null,
-  "table_filter": null
+  "query_param": null
 }

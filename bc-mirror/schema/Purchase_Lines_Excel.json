@@ -6,5 +6,5 @@
   "watermark_type": null,
   "id_column": "Document_No",
   "secondary_id": "Line_No",
-  "table_filter": "Outstanding_Quantity gt 0 and Document_Type eq 'Order'"
+  "query_param": "$filter=Outstanding_Quantity gt 0 and Document_Type eq 'Order'"
 }

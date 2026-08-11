@@ -6,5 +6,5 @@
   "watermark_type": null,
   "id_column": "TransferOrderNumber",
   "secondary_id": "TransferOrderLineNumber",
-  "table_filter": null
+  "query_param": null
 }

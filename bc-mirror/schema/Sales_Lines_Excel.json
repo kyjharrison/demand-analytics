@@ -7,5 +7,5 @@
   "id_column": "Document_No",
   "secondary_id": "Line_No",
   "tertiary_id": null,
-  "table_filter": "Document_Type eq 'Order' or Document_Type eq 'Blanket Order'"
+  "query_param": "$filter=Document_Type eq 'Order' or Document_Type eq 'Blanket Order'"
 }
