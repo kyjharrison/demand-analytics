@@ -1,0 +1,11 @@
+{
+  "endpoint": "purchaseOrders",
+  "api_type": "base",
+  "refresh_mode": "truncate",
+  "watermark_column": null,
+  "watermark_type": null,
+  "id_column": "id",
+  "secondary_id": null,
+  "tertiary_id": null,
+  "query_param": "$filter=fullyReceived eq false"
+}
