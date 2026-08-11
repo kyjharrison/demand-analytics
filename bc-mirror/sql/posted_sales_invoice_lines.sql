@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS posted_sales_invoices (
+CREATE TABLE IF NOT EXISTS posted_sales_invoice_lines (
     invoice TEXT,
     sales_order TEXT, 
     customer TEXT,
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS posted_sales_invoices (
     amt REAL,
     PRIMARY KEY (invoice, line)
 );
-INSERT OR REPLACE INTO posted_sales_invoices
+INSERT OR REPLACE INTO posted_sales_invoice_lines
     SELECT 
         h.No AS invoice,
         h.Order_No AS sales_order,
@@ -40,4 +40,4 @@ INSERT OR REPLACE INTO posted_sales_invoices
     FROM raw.Posted_Sales_Invoice_Lines l
     LEFT JOIN raw.Posted_Sales_Invoices_Header h
         ON l.Document_No = h.No
-    WHERE h.No >= (SELECT COALESCE(MAX(invoice), '') FROM posted_sales_invoices);
+    WHERE h.No >= (SELECT COALESCE(MAX(invoice), '') FROM posted_sales_invoice_lines);
