@@ -153,7 +153,20 @@ def refresh_table(schema):
 def build_clean_mirror():
     start = datetime.now()
     CONN_CLEAN.execute("ATTACH DATABASE ? AS raw", (str(MIRROR_DIR / "bc_mirror.db"),)) # can't use CONN_RAW because sqlite expects a string filepath not a connection object
-    for p in SQL_CLEAN.glob("*.sql"): # p is the path object for the sql file right now
+    clean_tables = [ 
+        "bin_contents.sql",
+        "boms.sql",
+        "item_ledger_entries.sql",
+        "items.sql",
+        "posted_sales_invoice_lines.sql",
+        "purchase_lines.sql",
+        "sales_lines.sql",
+        "transfer_lines.sql",
+        
+        "skus.sql", # must happen last, depends on item_ledger_entries, sales_lines, purchase_lines, and transfer_lines
+    ]
+    for filename in clean_tables:
+        p = SQL_CLEAN / filename 
         table_start = datetime.now()
         CONN_CLEAN.executescript(p.read_text())
         logging.info(f"{p.stem} refreshed in {datetime.now() - table_start}")
