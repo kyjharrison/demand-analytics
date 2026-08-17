@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS purchase_lines;
 CREATE TABLE purchase_lines AS
 SELECT
     pl.Document_Type AS doc_type,
-    pl.Document_No AS document,
+    pl.Document_No AS purchase_order,
     pl.Line_No AS line,
     pl.Buy_from_Vendor_No AS vendor,
 	pl.Type as type,
