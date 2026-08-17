@@ -36,7 +36,7 @@ def run(items=None, customer=None, location=None):
         dates.append(case_when(start + relativedelta(months=i)))
     lines.append(", ".join(dates))
 
-    lines.append("FROM posted_sales_invoices psi")
+    lines.append("FROM posted_sales_invoice_lines psi")
     lines.append("JOIN items i")
     lines.append("USING (item)")
     lines.append(f"WHERE psi.posting_date >= '{start.strftime('%Y-%m-%d')}'")
