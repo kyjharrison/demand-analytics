@@ -25,15 +25,15 @@ LEFT JOIN (
 	FROM item_ledger_entries
 	GROUP BY item, location
 ) oh 
-	ON oh.item = sku.item 
-	AND oh.location = sku.location 
+	ON oh.item = sku.Item_No 
+	AND oh.location = sku.Location_Code 
 
 LEFT JOIN (
 	SELECT item, location, SUM(qty_outstanding) AS qty_on_po
 	FROM purchase_lines
 	GROUP BY item, location
 ) po
-	ON po.item = sku.item AND po.location = sku.location 
+	ON po.item = sku.Item_No AND po.location = sku.Location_Code 
 	
 LEFT JOIN (
 	SELECT item, location, SUM(qty_outstanding) AS qty_on_so
@@ -41,4 +41,4 @@ LEFT JOIN (
 	WHERE blanket_order IS NULL OR blanket_order = ''
 	GROUP BY item, location 
 ) so
-	ON so.item = sku.item AND so.location = sku.location 
+	ON so.item = sku.Item_No AND so.location = sku.Location_Code 
