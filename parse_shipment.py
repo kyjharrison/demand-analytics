@@ -94,7 +94,7 @@ def parse_camel_invoice(filepath):
     return invoice_dict, po_list, filter_string, shipment_date # tuple
 
 def find_purlines():
-    required_columns = ["Document No.", "Line No.", "No.", "Expected Receipt Date", "Quantity", "Outstanding Quantity", "Qty. to Receive","Ship Date"]
+    required_columns = ["Document No.", "Line No.", "No.", "Expected Receipt Date", "Quantity", "Outstanding Quantity", "Qty. to Receive", "Requested Receipt Date", "Ship Date"]
     while True:
         files = list(DOWNLOADS_PATH.glob("Default*.xlsx"))
         newest = max(files, key=lambda x: x.stat().st_mtime)
@@ -120,9 +120,10 @@ def filter_purlines(df, po_list, shipment_date):
 
     df["Expected Receipt Date"] = pd.to_datetime(df["Expected Receipt Date"])
     df["Ship Date"] = pd.to_datetime(df["Ship Date"])
+    df["Requested Receipt Date"] = pd.to_datetime(df["Requested Receipt Date"])
 
     shipped = df["Document No."].isin(po_list)
-    past_due = (df["Ship Date"] < shipment_date) & (df["Outstanding Quantity"] > 0)
+    past_due = (df["Requested Receipt Date"] < shipment_date) & (df["Outstanding Quantity"] > 0)
     
     df = df[shipped | past_due]
     df["po_item_key"] = df.apply(lambda row: f"{row['Document No.']}|{row['No.'].replace('-','')}", axis=1)
@@ -157,7 +158,7 @@ def update_purlines(aggregated_invoice, filtered_purlines, shipment_date): # dic
 
     # split df into subsets
     shipped = filtered_purlines["po_item_key"].isin(aggregated_invoice)
-    past_due = (filtered_purlines["Ship Date"] < shipment_date) & (filtered_purlines["Outstanding Quantity"] > 0)
+    past_due = (filtered_purlines["Requested Receipt Date"] < shipment_date) & (filtered_purlines["Outstanding Quantity"] > 0)
 
     shipped_only = filtered_purlines[shipped & ~past_due].copy() # what's on the container and not past_due
     zero_only = filtered_purlines[~shipped & ~past_due].copy() # other lines on POs this invoice touches, which need to be zeroed out and not received
