@@ -4,13 +4,21 @@ If any found, emails a list to the inventory team.
 Otherwise, emails me a confirmation of nothing found. 
 """
 
-import sqlite3
-import pandas as pd
-from pathlib import Path
-import win32com.client
 import json
+import pandas as pd
+import sqlite3
+import sys
+import win32com.client
+
+from datetime import datetime
+from pathlib import Path
 
 from error_alert import send_alert
+
+# exit if outside business hours
+now = datetime.now()
+if now.weekday() >= 5 or not (6 <= now.hour < 20):
+    sys.exit(0)
 
 try:
 	with open(Path(__file__).parent.parent / "config.json") as f:
