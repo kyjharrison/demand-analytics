@@ -44,7 +44,7 @@ try:
 
 	last_emptied AS(
 		SELECT Item_No, MAX(Registering_Date) as last_emptied_date FROM running_balance
-		WHERE Balance = 0
+		WHERE ROUND(Balance, 5) = 0
 		GROUP BY Item_No
 	)
 
@@ -54,7 +54,7 @@ try:
 		Min(Registering_Date) as 'Date Posted' 
 		FROM running_balance
 	LEFT JOIN last_emptied USING (Item_No)
-	WHERE Balance > 0 
+	WHERE ROUND(Balance, 5) > 0 
 		AND Registering_Date > last_emptied_date
 	GROUP BY Item_No
 	HAVING Min(Registering_Date) < :CUTOFF
