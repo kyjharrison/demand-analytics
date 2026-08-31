@@ -24,44 +24,12 @@ try:
 	with open(Path(__file__).parent.parent / "config.json") as f:
 		config = json.load(f)
 
-	CONN_RAW = sqlite3.connect(Path(config["MIRROR_DIR"]) / "bc_mirror.db")
+	CONN = sqlite3.connect(Path(config["MIRROR_DIR"]) / "clean_mirror.db")
 	CUTOFF = (pd.Timestamp.now() - pd.offsets.BusinessDay(2)).strftime('%Y-%m-%d')
 
-	query = """
-	WITH running_balance AS(
-		SELECT 
-			Item_No,
-			Registering_Date,
-			SUM(Quantity) 
-				OVER (PARTITION BY Item_No ORDER BY Registering_Date ASC)
-				AS Balance,
-			ROW_NUMBER() 
-				OVER (PARTITION BY Item_No ORDER BY Registering_Date DESC) 
-				AS rn 
-			FROM Warehouse_Entries_Excel
-		WHERE Bin_Code = 'ASSEMBLEOUT' 
-	),
+	query = (Path(__file__).parent / "assembleout_alert.sql").read_text()
 
-	last_emptied AS(
-		SELECT Item_No, MAX(Registering_Date) as last_emptied_date FROM running_balance
-		WHERE ROUND(Balance, 5) = 0
-		GROUP BY Item_No
-	)
-
-	SELECT 
-		Item_No as Item,
-		MAX(CASE WHEN rn = 1 THEN Balance END) as Qty,
-		Min(Registering_Date) as 'Date Posted' 
-		FROM running_balance
-	LEFT JOIN last_emptied USING (Item_No)
-	WHERE ROUND(Balance, 5) > 0 
-		AND Registering_Date > last_emptied_date
-	GROUP BY Item_No
-	HAVING Min(Registering_Date) < :CUTOFF
-	ORDER BY 'Date Posted'
-	"""
-
-	df = pd.read_sql(query, CONN_RAW, params={"CUTOFF": CUTOFF})
+	df = pd.read_sql(query, CONN, params={"CUTOFF": CUTOFF})
 
 	if not df.empty:
 
