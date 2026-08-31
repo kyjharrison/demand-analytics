@@ -162,6 +162,7 @@ def build_clean_mirror():
         "purchase_lines.sql",
         "sales_lines.sql",
         "transfer_lines.sql",
+        "warehouse_entries.sql",
         
         "skus.sql", # must happen last, depends on item_ledger_entries, sales_lines, purchase_lines, and transfer_lines
     ]
