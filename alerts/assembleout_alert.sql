@@ -1,4 +1,4 @@
---REPLACE :CUTOFF FOR STANDALONE QUERYING
+--replace :CUTOFF with DATE('now', '-2 days') for standalone querying
 
 	WITH daily_ending_balance AS(
 		SELECT 
