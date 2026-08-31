@@ -167,40 +167,21 @@ def update_date(df):
     df.loc[~is_camel, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=ATLCA_BUFFER_DAYS + TRANSIT_DAYS) # programmatic update doesn't trigger recalc
     return df
 
-def update_purlines(aggregated_invoice, filtered_purlines): # dict, df, pd.Timestamp
-    
-    lines = []
+def update_purlines(aggregated_invoice, filtered_purlines): # dict, df
+    result = filtered_purlines.copy()
+    result["Qty. to Receive"] = 0 # zero everything first
 
-    # build boolean masks for filtering
-    shipped = filtered_purlines["po_item_key"].isin(aggregated_invoice)
-    past_due = filtered_purlines["past_due"]
+    shipped = result["po_item_key"].isin(aggregated_invoice) # PO-items on this container
+    for po_item_key, lines in result[shipped].groupby("po_item_key"):
+        qty_shipped = aggregated_invoice[po_item_key]
+        filled = fill_qties(lines, qty_shipped)
+        result.loc[filled.index, "Qty. to Receive"] = filled["Qty. to Receive"]
 
-    shipped_only = filtered_purlines[shipped & ~past_due].copy() # what's on the container and not past_due
-    zero_only = filtered_purlines[~shipped & ~past_due].copy() # other lines on POs this invoice touches, which need to be zeroed out and not received
-    date_only = filtered_purlines[past_due & ~shipped].copy() # past due lines, whether on these POs or others, which need their dates updated
-    shipped_and_date = filtered_purlines[shipped & past_due].copy() # partial lines on this container where the remaining balance is also past due
+    past_due = result["past_due"]
+    result.loc[past_due] = update_date(result.loc[past_due].copy())
 
-    # input qties shipped
-    for key, group in shipped_only.groupby("po_item_key"):
-        remaining = aggregated_invoice[key]
-        lines.append(fill_qties(group, remaining))
+    return result
 
-    # input qties and bump dates
-    for key, group in shipped_and_date.groupby("po_item_key"):
-        remaining = aggregated_invoice[key]
-        group = fill_qties(group, remaining)
-        group = update_date(group)
-        lines.append(group)
-
-    # zero qties
-    zero_only.loc[:, "Qty. to Receive"] = 0
-    lines.append(zero_only)
-
-    # bump dates
-    date_only.loc[:, "Qty. to Receive"] = 0
-    lines.append(update_date(date_only)) 
-
-    return pd.concat(lines) # returns df
 
 # uses output from purlines so that item numbers will always match the hyphenation in BC
 def summarize_for_transfer(lines):
