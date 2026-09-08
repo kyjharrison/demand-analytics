@@ -1,0 +1,11 @@
+{
+  "endpoint": "Posted_Assembly_Order_Excel",
+  "api_type": "odata",
+  "refresh_mode": "upsert",
+  "watermark_column": "No",
+  "watermark_type": "string",
+  "id_column": "No",
+  "secondary_id": null,
+  "tertiary_id": null,
+  "query_param": null
+}
