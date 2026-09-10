@@ -5,6 +5,7 @@ SELECT
 	sle.Document_No AS document, 
 	sle.Line_No AS line, 
 	sle.Sell_to_Customer_No AS customer, 
+	sle.Sell_to_Customer_Name AS customer_name,
 	sle.Type AS type, 
 	sle.No AS item, 
 	sle.Description AS description, 
