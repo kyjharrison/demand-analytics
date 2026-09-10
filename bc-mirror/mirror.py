@@ -154,10 +154,12 @@ def build_clean_mirror():
     start = datetime.now()
     CONN_CLEAN.execute("ATTACH DATABASE ? AS raw", (str(MIRROR_DIR / "bc_mirror.db"),)) # can't use CONN_RAW because sqlite expects a string filepath not a connection object
     clean_tables = [ 
+        "assembly_orders.sql",
         "bin_contents.sql",
         "boms.sql",
         "item_ledger_entries.sql",
         "items.sql",
+        "posted_assembly_orders.sql",
         "posted_sales_invoice_lines.sql",
         "purchase_lines.sql",
         "sales_lines.sql",
@@ -166,6 +168,13 @@ def build_clean_mirror():
         
         "skus.sql", # must happen last, depends on item_ledger_entries, sales_lines, purchase_lines, and transfer_lines
     ]
+
+    # check all sql files are in the list to refresh
+    registered = set(clean_tables)
+    in_folder = {p.name for p in SQL_CLEAN.glob("*.sql")}
+    for unregistered in sorted(in_folder - registered):
+        logging.warning(f"{unregistered} in {SQL_CLEAN} but not in the clean_tables refresh list")
+
     for filename in clean_tables:
         p = SQL_CLEAN / filename 
         table_start = datetime.now()
