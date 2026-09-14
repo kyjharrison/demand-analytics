@@ -1,0 +1,223 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.23.14",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "ygry",
+      "code_hash": null,
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "54ccffddc61c04652f868b18f2baa502",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "1a4b266b888b52a05f5ee668c65bc9bf",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "0b16942d4016035299c405abad5357d9",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<marimo-ui-element object-id='bkHC-0' random-id='a8e2b9d3-17c3-9f1a-3775-cbbf6478e5a2'><marimo-file data-initial-value='[]' data-label='null' data-filetypes='[]' data-multiple='true' data-kind='&quot;area&quot;' data-max_size='100000000'></marimo-file></marimo-ui-element>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "lEQa",
+      "code_hash": "5df40a65eb1b651eae5c695dbcba852b",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "PL SH26A000155 (for BWXT).pdf\nInvoice EI268A000089 (for BWXT).pdf\nPL SH26A000156 (for Vit.).pdf\nInvoice EI268A000090 (for Vit.).pdf\nPL SH26000510 (for Flex).pdf\nInvoice EI268000205 (for Flex).pdf\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "PKri",
+      "code_hash": "bc150d0ef22eaef0694ccb64068d9ebc",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><span class=\"paragraph\">Found 3 invoices. </span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Xref",
+      "code_hash": "a818c9cf5070c100cd9a33b53a7d0843",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><span class=\"paragraph\"><strong>Shipment date:</strong> 2026-09-07 </span>\n<span class=\"paragraph\"><strong>Container:</strong> UETU2870090</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "SFPL",
+      "code_hash": "1a2850a685e7ee18ffc294b878027b94",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><span class=\"paragraph\"><strong>1 item(s) with no PO.</strong> </span>\n<span class=\"paragraph\">Please enter a PO number to receive against:</span>\n<table>\n<thead>\n<tr>\n<th>invoice</th>\n<th>item</th>\n<th>qty</th>\n<th></th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>EI268000205</td>\n<td>59100</td>\n<td>25.000</td>\n<td><marimo-ui-element object-id='SFPL-0' random-id='88703d6c-4f0f-4187-ef32-df4a178dc333'><marimo-text data-initial-value='&quot;&quot;' data-label='null' data-placeholder='&quot;Enter PO&quot;' data-kind='&quot;text&quot;' data-full-width='false' data-disabled='false' data-debounce='true'></marimo-text></marimo-ui-element></td>\n</tr>\n</tbody>\n</table></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "BYtC",
+      "code_hash": "53031019c63f9622c728d876d3f7ead2",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<marimo-ui-element object-id='BYtC-0' random-id='ca7adfd5-b953-5092-f21d-88d8889e55d6'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;invoice&#92;&quot;:&#92;&quot;EI268A000089&#92;&quot;,&#92;&quot;line&#92;&quot;:&#92;&quot;1&#92;&quot;,&#92;&quot;po&#92;&quot;:&#92;&quot;PO0008842&#92;&quot;,&#92;&quot;item&#92;&quot;:&#92;&quot;2000001966&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;20x4-1/2x8WAY60D15VN45M/S,&#92;&#92;nBWXT&#92;&quot;,&#92;&quot;qty_shipped&#92;&quot;:16,&#92;&quot;po_item_key&#92;&quot;:&#92;&quot;PO0008842|2000001966&#92;&quot;},{&#92;&quot;invoice&#92;&quot;:&#92;&quot;EI268A000089&#92;&quot;,&#92;&quot;line&#92;&quot;:&#92;&quot;2&#92;&quot;,&#92;&quot;po&#92;&quot;:&#92;&quot;PO0008842&#92;&quot;,&#92;&quot;item&#92;&quot;:&#92;&quot;2000001971&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;20x7x8WAY60D15VNW/RECESSIN&#92;&#92;nTHEBORE45M/SBWXTWidth&#92;&#92;ntolerance+1/32&#92;&#92;u201d-0.0&#92;&#92;u201d&#92;&quot;,&#92;&quot;qty_shipped&#92;&quot;:36,&#92;&quot;po_item_key&#92;&quot;:&#92;&quot;PO0008842|2000001971&#92;&quot;},{&#92;&quot;invoice&#92;&quot;:&#92;&quot;EI268A000090&#92;&quot;,&#92;&quot;line&#92;&quot;:&#92;&quot;1&#92;&quot;,&#92;&quot;po&#92;&quot;:&#92;&quot;PO0009737&#92;&quot;,&#92;&quot;item&#92;&quot;:&#92;&quot;34212&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;7x1/2x1-1/4AS360JVCER&#92;&quot;,&#92;&quot;qty_shipped&#92;&quot;:100,&#92;&quot;po_item_key&#92;&quot;:&#92;&quot;PO0009737|34212&#92;&quot;},{&#92;&quot;invoice&#92;&quot;:&#92;&quot;EI268A000090&#92;&quot;,&#92;&quot;line&#92;&quot;:&#92;&quot;2&#92;&quot;,&#92;&quot;po&#92;&quot;:&#92;&quot;PO0009737&#92;&quot;,&#92;&quot;item&#92;&quot;:&#92;&quot;34324&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;7x1/2x1-1/4AZ60I8VN32ASURFACE&#92;&#92;nGRINDINGWHEEL&#92;&quot;,&#92;&quot;qty_shipped&#92;&quot;:140,&#92;&quot;po_item_key&#92;&quot;:&#92;&quot;PO0009737|34324&#92;&quot;},{&#92;&quot;invoice&#92;&quot;:&#92;&quot;EI268A000090&#92;&quot;,&#92;&quot;line&#92;&quot;:&#92;&quot;3&#92;&quot;,&#92;&quot;po&#92;&quot;:&#92;&quot;PO0009737&#92;&quot;,&#92;&quot;item&#92;&quot;:&#92;&quot;34336&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;7x3/4x1-1/4AZ46I8VN32AT-5(R/1/S&#92;&#92;n-3x1/4)&#92;&quot;,&#92;&quot;qty_shipped&#92;&quot;:100,&#92;&quot;po_item_key&#92;&quot;:&#92;&quot;PO0009737|34336&#92;&quot;},{&#92;&quot;invoice&#92;&quot;:&#92;&quot;EI268A000090&#92;&quot;,&#92;&quot;line&#92;&quot;:&#92;&quot;4&#92;&quot;,&#92;&quot;po&#92;&quot;:&#92;&quot;PO0009737&#92;&quot;,&#92;&quot;item&#92;&quot;:&#92;&quot;34329&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;7x1/2x1-1/4AZ80K8VN32A&#92;&quot;,&#92;&quot;qty_shipped&#92;&quot;:100,&#92;&quot;po_item_key&#92;&quot;:&#92;&quot;PO0009737|34329&#92;&quot;},{&#92;&quot;invoice&#92;&quot;:&#92;&quot;EI268A000090&#92;&quot;,&#92;&quot;line&#92;&quot;:&#92;&quot;5&#92;&quot;,&#92;&quot;po&#92;&quot;:&#92;&quot;PO0009721&#92;&quot;,&#92;&quot;item&#92;&quot;:&#92;&quot;B00865&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;230x39x38.1GC220K7V45M/S&#92;&quot;,&#92;&quot;qty_shipped&#92;&quot;:12,&#92;&quot;po_item_key&#92;&quot;:&#92;&quot;PO0009721|B00865&#92;&quot;},{&#92;&quot;invoice&#92;&quot;:&#92;&quot;EI268A000090&#92;&quot;,&#92;&quot;line&#92;&quot;:&#92;&quot;6&#92;&quot;,&#92;&quot;po&#92;&quot;:&#92;&quot;PO0009713&#92;&quot;,&#92;&quot;item&#92;&quot;:&#92;&quot;34315&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;7x1/4x1-1/4AZ100K8VN32A&#92;&quot;,&#92;&quot;qty_shipped&#92;&quot;:90,&#92;&quot;po_item_key&#92;&quot;:&#92;&quot;PO0009713|34315&#92;&quot;},{&#92;&quot;invoice&#92;&quot;:&#92;&quot;EI268A000090&#92;&quot;,&#92;&quot;line&#92;&quot;:&#92;&quot;7&#92;&quot;,&#92;&quot;po&#92;&quot;:&#92;&quot;PO0009669&#92;&quot;,&#92;&quot;item&#92;&quot;:&#92;&quot;38534&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;14x2x1-1/21GC60IVSB&#92;&quot;,&#92;&quot;qty_shipped&#92;&quot;:18,&#92;&quot;po_item_key&#92;&quot;:&#92;&quot;PO0009669|38534&#92;&quot;},{&#92;&quot;invoice&#92;&quot;:&#92;&quot;EI268A000090&#92;&quot;,&#92;&quot;line&#92;&quot;:&#92;&quot;8&#92;&quot;,&#92;&quot;po&#92;&quot;:&#92;&quot;PO0009667&#92;&quot;,&#92;&quot;item&#92;&quot;:&#92;&quot;34622&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;7x1/2x1-1/4WA60KVD&#92;&quot;,&#92;&quot;qty_shipped&#92;&quot;:50,&#92;&quot;po_item_key&#92;&quot;:&#92;&quot;PO0009667|34622&#92;&quot;}]&quot;' data-total-rows='33' data-total-columns='7' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='10' data-field-types='[[&quot;invoice&quot;,[&quot;string&quot;,&quot;str&quot;]],[&quot;line&quot;,[&quot;string&quot;,&quot;str&quot;]],[&quot;po&quot;,[&quot;string&quot;,&quot;str&quot;]],[&quot;item&quot;,[&quot;string&quot;,&quot;str&quot;]],[&quot;description&quot;,[&quot;string&quot;,&quot;str&quot;]],[&quot;qty_shipped&quot;,[&quot;integer&quot;,&quot;int64&quot;]],[&quot;po_item_key&quot;,[&quot;string&quot;,&quot;str&quot;]]]' data-show-filters='true' data-show-download='true' data-show-search='true' data-show-column-summaries='true' data-show-data-types='true' data-show-page-size-selector='true' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[]' data-hidden-columns='[]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "RGSE",
+      "code_hash": "bc7de205cdc859bec4fa4c964aad1c98",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><span class=\"paragraph\">Purlines loaded. </span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Kclp",
+      "code_hash": "aac1d25367cc11f4223dd11e4dac5fbe",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "emfo",
+      "code_hash": "9dce44d82392e0626622e8aef209ae87",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><span class=\"paragraph\">Opening files for config pkg upload...</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Hstk",
+      "code_hash": "4eb24e433b965facb716efffad908f7b",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><span class=\"paragraph\">Opening PO list in BC...</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "nWHF",
+      "code_hash": "8f182a6041d6f71e3c46a504b2c42f49",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><style>details { margin: 0; } details table { margin: 0; } details summary { padding: 0; }</style>\n<details open><summary>PO0008649</summary><table style='border:none;border-collapse:collapse'><tr><td>36256A</td><td style='text-align:right'>2560</td></tr></table></details>\n<details open><summary>PO0008842</summary><table style='border:none;border-collapse:collapse'><tr><td>2000001966</td><td style='text-align:right'>16</td></tr><tr><td>2000001971</td><td style='text-align:right'>36</td></tr></table></details>\n<details open><summary>PO0009129</summary><table style='border:none;border-collapse:collapse'><tr><td>35582</td><td style='text-align:right'>1260</td></tr></table></details>\n<details open><summary>PO0009231</summary><table style='border:none;border-collapse:collapse'><tr><td>45002</td><td style='text-align:right'>16025</td></tr></table></details>\n<details open><summary>PO0009419</summary><table style='border:none;border-collapse:collapse'><tr><td>45002</td><td style='text-align:right'>6375</td></tr><tr><td>45012</td><td style='text-align:right'>16200</td></tr></table></details>\n<details open><summary>PO0009421</summary><table style='border:none;border-collapse:collapse'><tr><td>35600</td><td style='text-align:right'>1110</td></tr></table></details>\n<details open><summary>PO0009427</summary><table style='border:none;border-collapse:collapse'><tr><td>PRS51013A</td><td style='text-align:right'>21</td></tr></table></details>\n<details open><summary>PO0009495</summary><table style='border:none;border-collapse:collapse'><tr><td>35131</td><td style='text-align:right'>15750</td></tr></table></details>\n<details open><summary>PO0009498</summary><table style='border:none;border-collapse:collapse'><tr><td>45047</td><td style='text-align:right'>3150</td></tr></table></details>\n<details open><summary>PO0009561</summary><table style='border:none;border-collapse:collapse'><tr><td>35620</td><td style='text-align:right'>5600</td></tr></table></details>\n<details open><summary>PO0009583</summary><table style='border:none;border-collapse:collapse'><tr><td>35514</td><td style='text-align:right'>28800</td></tr><tr><td>45007</td><td style='text-align:right'>12600</td></tr></table></details>\n<details open><summary>PO0009585</summary><table style='border:none;border-collapse:collapse'><tr><td>35600</td><td style='text-align:right'>1540</td></tr></table></details>\n<details open><summary>PO0009626</summary><table style='border:none;border-collapse:collapse'><tr><td>34252</td><td style='text-align:right'>100</td></tr></table></details>\n<details open><summary>PO0009656</summary><table style='border:none;border-collapse:collapse'><tr><td>B00862</td><td style='text-align:right'>10</td></tr></table></details>\n<details open><summary>PO0009667</summary><table style='border:none;border-collapse:collapse'><tr><td>34622</td><td style='text-align:right'>50</td></tr></table></details>\n<details open><summary>PO0009669</summary><table style='border:none;border-collapse:collapse'><tr><td>38534</td><td style='text-align:right'>18</td></tr></table></details>\n<details open><summary>PO0009673</summary><table style='border:none;border-collapse:collapse'><tr><td>PRS51011</td><td style='text-align:right'>12625</td></tr><tr><td>PRS51012</td><td style='text-align:right'>1725</td></tr><tr><td>PRS51013A</td><td style='text-align:right'>3944</td></tr></table></details>\n<details open><summary>PO0009713</summary><table style='border:none;border-collapse:collapse'><tr><td>34315</td><td style='text-align:right'>90</td></tr></table></details>\n<details open><summary>PO0009721</summary><table style='border:none;border-collapse:collapse'><tr><td>B00865</td><td style='text-align:right'>12</td></tr></table></details>\n<details open><summary>PO0009736</summary><table style='border:none;border-collapse:collapse'><tr><td>59100</td><td style='text-align:right'>12275</td></tr><tr><td>59101A</td><td style='text-align:right'>8000</td></tr></table></details>\n<details open><summary>PO0009737</summary><table style='border:none;border-collapse:collapse'><tr><td>34212</td><td style='text-align:right'>100</td></tr><tr><td>34324</td><td style='text-align:right'>140</td></tr><tr><td>34329</td><td style='text-align:right'>100</td></tr><tr><td>34336</td><td style='text-align:right'>100</td></tr></table></details>\n<details open><summary>PO0009842</summary><table style='border:none;border-collapse:collapse'><tr><td>PRS51012</td><td style='text-align:right'>175</td></tr></table></details>\n<details open><summary>PO0009902</summary><table style='border:none;border-collapse:collapse'><tr><td>59101A</td><td style='text-align:right'>186</td></tr></table></details></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "iLit",
+      "code_hash": "3218fc162f2b1922662279eb039378dc",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<marimo-ui-element object-id='iLit-0' random-id='aa4d0d17-a16e-0c42-1dc2-dbb72b3b4c81'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;No.&#92;&quot;:&#92;&quot;2000001966&#92;&quot;,&#92;&quot;Qty. to Receive&#92;&quot;:16},{&#92;&quot;No.&#92;&quot;:&#92;&quot;2000001971&#92;&quot;,&#92;&quot;Qty. to Receive&#92;&quot;:36},{&#92;&quot;No.&#92;&quot;:&#92;&quot;34212&#92;&quot;,&#92;&quot;Qty. to Receive&#92;&quot;:100},{&#92;&quot;No.&#92;&quot;:&#92;&quot;34252&#92;&quot;,&#92;&quot;Qty. to Receive&#92;&quot;:100},{&#92;&quot;No.&#92;&quot;:&#92;&quot;34315&#92;&quot;,&#92;&quot;Qty. to Receive&#92;&quot;:90},{&#92;&quot;No.&#92;&quot;:&#92;&quot;34324&#92;&quot;,&#92;&quot;Qty. to Receive&#92;&quot;:140},{&#92;&quot;No.&#92;&quot;:&#92;&quot;34329&#92;&quot;,&#92;&quot;Qty. to Receive&#92;&quot;:100},{&#92;&quot;No.&#92;&quot;:&#92;&quot;34336&#92;&quot;,&#92;&quot;Qty. to Receive&#92;&quot;:100},{&#92;&quot;No.&#92;&quot;:&#92;&quot;34622&#92;&quot;,&#92;&quot;Qty. to Receive&#92;&quot;:50},{&#92;&quot;No.&#92;&quot;:&#92;&quot;35131&#92;&quot;,&#92;&quot;Qty. to Receive&#92;&quot;:15750}]&quot;' data-total-rows='27' data-total-columns='1' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='10' data-field-types='[[&quot;Qty. to Receive&quot;,[&quot;integer&quot;,&quot;int64&quot;]]]' data-show-filters='true' data-show-download='true' data-show-search='true' data-show-column-summaries='true' data-show-data-types='true' data-show-page-size-selector='true' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[[&quot;No.&quot;,[&quot;string&quot;,&quot;str&quot;]]]' data-hidden-columns='[]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ZHCJ",
+      "code_hash": "e3638577be161c92821b1f9a83544a5f",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><span class=\"paragraph\"><strong>Copy container number</strong> \u2014 <marimo-ui-element object-id='ZHCJ-0' random-id='eb66db4f-eb31-99c3-6699-d4f1f69a1b44'><marimo-button data-initial-value='0' data-label='&quot;&#92;u003cspan class=&#92;&quot;markdown prose dark:prose-invert contents&#92;&quot;&#92;u003e&#92;u003cspan class=&#92;&quot;paragraph&#92;&quot;&#92;u003eCAMEL UETU2870090&#92;u003c/span&#92;u003e&#92;u003c/span&#92;u003e&quot;' data-kind='&quot;neutral&quot;' data-disabled='false' data-full-width='false'></marimo-button></marimo-ui-element> </span>\n<span class=\"paragraph\"><strong>Paste transfer number</strong> \u2014 <marimo-ui-element object-id='ZHCJ-1' random-id='8eaf955e-74c6-61b1-0dba-b320bfab7ef4'><marimo-text data-initial-value='&quot;&quot;' data-label='null' data-placeholder='&quot;Transfer order number&quot;' data-kind='&quot;text&quot;' data-full-width='false' data-disabled='false' data-debounce='true'></marimo-text></marimo-ui-element></span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ROlb",
+      "code_hash": "072f73a599112540bad0dfb0568ae074",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><span class=\"paragraph\">Files not yet saved to In Transit folder</span></span>"
+          }
+        }
+      ],
+      "console": []
+    }
+  ]
+}
