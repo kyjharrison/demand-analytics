@@ -154,7 +154,7 @@ def build_clean_mirror():
     start = datetime.now()
     CONN_CLEAN.execute("ATTACH DATABASE ? AS raw", (str(MIRROR_DIR / "bc_mirror.db"),)) # can't use CONN_RAW because sqlite expects a string filepath not a connection object
     clean_tables = [ 
-        "assembly_orders.sql",
+        "assembly_lines.sql",
         "bin_contents.sql",
         "boms.sql",
         "item_ledger_entries.sql",
