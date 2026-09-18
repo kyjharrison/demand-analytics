@@ -16,12 +16,39 @@ def _():
     return
 
 
+@app.cell
+def _():
+    #TODO add list of discrepancies between total receipts and sales orders
+    return
+
+
+@app.cell
+def _():
+    #TODO add auto-open filtered list of orders to closeoutlist of orders to closeout and auto-open filtered list 
+    return
+
+
+@app.cell
+def _():
+    #TODO add logger
+    return
+
+
+@app.cell
+def _():
+    #TODO any lines missing from PURLINES (like the -V vallen items don't get added to the transfer, need to fix that)
+    return
+
+
 @app.cell(hide_code=True)
 def _():
     import marimo as mo
     import io
     import json
     import os
+    import requests
+    import sys
+    import time
     import webbrowser
 
     from datetime import datetime
@@ -29,7 +56,14 @@ def _():
 
     import pandas as pd
     import pdfplumber
+    import pyperclip
     import re
+
+    sys.path.insert(0, str(Path(__file__).parent / "bc-mirror"))
+    from bc_keyvault_auth import build_bc_odata_base_url, get_bc_connection
+
+    BC_CONFIG, BC_HEADERS = get_bc_connection()
+    base = build_bc_odata_base_url(BC_CONFIG)
 
     with open(Path(__file__).parent / "config.json") as config:
         config = json.load(config)
@@ -44,17 +78,23 @@ def _():
     return (
         ATLCA_BUFFER_DAYS,
         BC_BASE,
+        BC_CONFIG,
+        BC_HEADERS,
         CAMEL_BUFFER_DAYS,
         DOWNLOADS_DIR,
         TRANSIT_DAYS,
         TRANSIT_DIR,
+        build_bc_odata_base_url,
         datetime,
         io,
         mo,
         os,
         pd,
         pdfplumber,
+        pyperclip,
         re,
+        requests,
+        time,
         webbrowser,
     )
 
@@ -67,9 +107,12 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(files):
-    for f in files.value:
-        print(f.name)
+def _(files, mo):
+    file_list_display = ""
+    if files.value:
+        file_list_display += "Uploaded files: \n\n"
+        file_list_display += "  \n".join(f.name for f in files.value)
+    mo.md(file_list_display)
     return
 
 
@@ -85,7 +128,7 @@ def _(files, io, mo, pd, pdfplumber, re):
 
     for uploaded in files.value:
         if uploaded.name.startswith("Invoice") and uploaded.name.endswith(".pdf"): # drag-and-drop all docs but only parse invoices
-            invoice_num = uploaded.name.split(" ")[1] 
+            invoice_num = uploaded.name.split()[1] 
             file_count += 1
 
             invoice_container = None
@@ -110,7 +153,7 @@ def _(files, io, mo, pd, pdfplumber, re):
 
                         # collect invoice lines 
                         for row in table:
-                            if row == HEADER:
+                            if [cell.replace(" ", "") if cell else cell for cell in row] == HEADER: #strips spaces before comparing to header
                                 collecting_lines = True # flip the state flag
                                 continue
                             if collecting_lines and len(row) == 8 and (row[1] or row[2]): # skip lines with neither PO nor item (such as the freight charge line)
@@ -120,7 +163,7 @@ def _(files, io, mo, pd, pdfplumber, re):
 
 
     # confirm document parsing and get user input if needed
-    invoice_confirmation_display = f"Found {file_count} invoices. \n\n"
+    invoice_confirmation_display = f"{file_count} invoices found \n\n"
 
     date_picker = None
     if len(invoice_dates) > 1:
@@ -166,6 +209,8 @@ def _(container_picker, containers, date_picker, invoice_dates, mo):
 
 @app.cell(hide_code=True)
 def _(invoice_raw, mo):
+    # prompt user to enter a PO number for lines with no PO listed
+
     po_inputs = {}
     missing_po = invoice_raw[invoice_raw["PONo"] == ""]
     po_input_display = None
@@ -182,8 +227,9 @@ def _(invoice_raw, mo):
     return (po_inputs,)
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(invoice_raw, po_inputs):
+    # incorporate the user's inputs into the final dataframe
     patched = invoice_raw.copy()
     if po_inputs:
         for index, input_po, in po_inputs.items():
@@ -213,11 +259,24 @@ def _(invoice_raw, po_inputs):
     filter_string = "|".join(po_list)
 
     camel_invoice
+
     return camel_invoice, filter_string, invoice_dict, po_list
 
 
-@app.cell(hide_code=True)
+@app.cell
+def _(BC_CONFIG, BC_HEADERS, build_bc_odata_base_url, pd, po_list, requests):
+    odata_base = build_bc_odata_base_url(BC_CONFIG)
+    odata_filter = " or ".join(f"Document_No eq '{po}'" for po in po_list)
+    get_response = requests.get(f"{odata_base}/Purchase_Order_Line_Excel?$filter={odata_filter}&$select=Document_Type,Document_No,Line_No,No,Description,Quantity,Qty_to_Receive,Quantity_Received,Requested_Receipt_Date,Planned_Receipt_Date,Expected_Receipt_date,Inbound_Whse_Handling_Time", headers=BC_HEADERS, timeout=30)
+    purlines = pd.DataFrame(get_response.json()["value"])
+    purlines
+    return odata_base, purlines
+
+
+@app.cell
 def _(DOWNLOADS_DIR, datetime, invoice_dict, mo, pd):
+    # this whole cell will be replaced with the API call
+
     required_columns = ["Document No.", "Line No.", "Buy-from Vendor No.", "No.", "Expected Receipt Date", "Quantity", "Outstanding Quantity", "Qty. to Receive", "Requested Receipt Date", "Ship Date"]
 
     # look through downloads folder, find newest `Default*` file, check if it's the right config export, and pull into a df
@@ -265,7 +324,24 @@ def _(DOWNLOADS_DIR, datetime, invoice_dict, mo, pd):
     return newest, purlines
 
 
-@app.cell(hide_code=True)
+@app.cell
+def _(BC_HEADERS, odata_base, requests):
+    etag = 'W/"JzIwOzE2Nzk5NjYxMTUzODUzMjcyNjcwMTswMDsn"'
+
+    patch_headers = {**BC_HEADERS, "Content-Type": "application/json", "If-Match": etag}
+
+    test = requests.patch(
+        f"{odata_base}/Purchase_Order_Line_Excel(Document_Type='Order',Document_No='PO0008842',Line_No=10000)",
+        headers=patch_headers,
+        json={"Qty_to_Receive": 0},
+        timeout=30,
+    )
+
+    test.status_code, test.text
+    return
+
+
+@app.cell
 def _(
     ATLCA_BUFFER_DAYS,
     CAMEL_BUFFER_DAYS,
@@ -274,6 +350,8 @@ def _(
     purlines,
     shipment_date,
 ):
+    # filter to only lines shipped and/or past-due
+
     shipped_pos = purlines["Document No."].isin(po_list)
 
     atlca_past_due = (
@@ -298,7 +376,17 @@ def _(
     return (filtered_purlines,)
 
 
-@app.cell(hide_code=True)
+@app.cell
+def _(mo):
+    # will still need button for API version
+    # should only patch back when confirmed all lines are good
+
+    open_file_button = mo.ui.run_button(label="Open files for upload")
+    open_file_button
+    return (open_file_button,)
+
+
+@app.cell
 def _(
     ATLCA_BUFFER_DAYS,
     CAMEL_BUFFER_DAYS,
@@ -307,6 +395,7 @@ def _(
     invoice_dict,
     mo,
     newest,
+    open_file_button,
     os,
     pd,
 ):
@@ -333,7 +422,7 @@ def _(
         df.loc[is_camel, "Ship Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=CAMEL_BUFFER_DAYS)
         df.loc[is_camel, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=CAMEL_BUFFER_DAYS + TRANSIT_DAYS)
         df.loc[~is_camel, "Ship Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=ATLCA_BUFFER_DAYS)
-        df.loc[~is_camel, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=ATLCA_BUFFER_DAYS + TRANSIT_DAYS) # programmatic update doesn't trigger recalc
+        df.loc[~is_camel, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=ATLCA_BUFFER_DAYS + TRANSIT_DAYS) # have to explicitly write Expected Receipt Date as programmatic update doesn't trigger recalc
         return df
 
     def update_purlines(invoice_dict, filtered_purlines): # dict, df
@@ -353,24 +442,31 @@ def _(
 
     output = update_purlines(invoice_dict, filtered_purlines)
 
-    output.to_excel("output.xlsx", index=False)
-    os.startfile("output.xlsx")
-    os.startfile(str(newest))
-
-    mo.md("Opening files for config pkg upload...")
+    if open_file_button.value:
+        output.to_excel("output.xlsx", index=False)
+        os.startfile("output.xlsx")
+        os.startfile(str(newest))
+        mo.md("Opening files for config pkg upload...")
     return (output,)
 
 
+@app.cell
+def _(mo):
+    open_po_button = mo.ui.run_button(label="Config pkg uploaded? Press this button to go to PO list")
+    open_po_button
+    return (open_po_button,)
+
+
 @app.cell(hide_code=True)
-def _(BC_BASE, filter_string, mo, webbrowser):
-    bc_url = f"{BC_BASE}&page=9307&filter='No.' IS '{filter_string}'"
-    webbrowser.open(bc_url)
-    mo.md("Opening PO list in BC...")
+def _(BC_BASE, filter_string, open_po_button, webbrowser):
+    if open_po_button.value:
+        bc_url = f"{BC_BASE}&page=9307&filter='No.' IS '{filter_string}'"
+        webbrowser.open(bc_url)
     return
 
 
 @app.cell(hide_code=True)
-def _(camel_invoice, mo):
+def _(camel_invoice, mo, time):
     blocks = []
     display_df = camel_invoice.groupby(["po", "item"])["qty_shipped"].sum().reset_index()
     for po_num, items_df in display_df.groupby("po"):
@@ -379,7 +475,7 @@ def _(camel_invoice, mo):
         for _, q in items_df.iterrows():
             rows += f"<tr><td>{q['item']}</td><td style='text-align:right'>{q['qty_shipped']}</td></tr>"
         po_table = f"<table style='border:none;border-collapse:collapse'>{rows}</table>"
-        blocks.append(f"<details open><summary>{po_num}</summary>{po_table}</details>")
+        blocks.append(f"<details key='{po_num}-{time.time()}' open><summary>{po_num}</summary>{po_table}</details>")
 
     style = "<style>details { margin: 0; } details table { margin: 0; } details summary { padding: 0; }</style>"
 
@@ -396,19 +492,21 @@ def _(output):
         .sort_index()
     )
     transfer
-    return
+    return (transfer,)
 
 
 @app.cell(hide_code=True)
-def _(container, mo, pyperclip):
-    transfer_number = None
+def _(container, mo, pyperclip, transfer):
+    item_list = "\n".join(str(item) for item in transfer.index)
+    copy_items_button = mo.ui.button(label="item list", on_click=lambda _: pyperclip.copy(item_list))
 
     transfer_container = f"CAMEL {container}"
     copy_container_button = mo.ui.button(label=transfer_container, on_click=lambda _: pyperclip.copy(transfer_container))
 
+    transfer_number = None
     transfer_number_input = mo.ui.text(placeholder="Transfer order number")
 
-    mo.md(f"**Copy container number** — {copy_container_button} \n\n**Paste transfer number** — {transfer_number_input}")
+    mo.md(f"**Copy container number** — {copy_container_button} \n\n**Paste transfer number** — {transfer_number_input} \n\n **Copy item list** — {copy_items_button}")
     return transfer_container, transfer_number_input
 
 
