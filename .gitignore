@@ -9,3 +9,5 @@ __pycache__/
 venv/
 logs/
 config.json
+*.py.bak*
+__marimo__/
