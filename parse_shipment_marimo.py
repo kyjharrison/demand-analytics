@@ -6,18 +6,6 @@ app = marimo.App(width="medium")
 
 @app.cell
 def _():
-    #TODO get new Entra app registration with permissions scoped to PATCH and POST against tables 38, 39, 5740, 5741 (purchase headers, purchase lines, transfer headers, transfer lines). not to post receipts just to do the data entry. 
-    return
-
-
-@app.cell
-def _():
-    #TODO snap to first day of current month if shipment date is previous month
-    return
-
-
-@app.cell
-def _():
     #TODO add list of discrepancies between total receipts and sales orders
     return
 
@@ -48,6 +36,7 @@ def _():
     import os
     import requests
     import sys
+    import subprocess
     import time
     import webbrowser
 
@@ -81,22 +70,26 @@ def _():
         BC_CONFIG,
         BC_HEADERS,
         CAMEL_BUFFER_DAYS,
-        DOWNLOADS_DIR,
         TRANSIT_DAYS,
         TRANSIT_DIR,
         build_bc_odata_base_url,
-        datetime,
         io,
         mo,
-        os,
         pd,
         pdfplumber,
-        pyperclip,
         re,
         requests,
         time,
         webbrowser,
     )
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Process container
+    """)
+    return
 
 
 @app.cell(hide_code=True)
@@ -208,6 +201,24 @@ def _(container_picker, containers, date_picker, invoice_dates, mo):
 
 
 @app.cell(hide_code=True)
+def _(BC_HEADERS, container, mo, odata_base, requests):
+    # check if container already exists in transfer order list
+
+    vendor = "CAMEL"
+    transfer_container = f"{vendor} {container}"
+
+    container_check_warning = None
+    existing = requests.get(
+        f"{odata_base}/Transfer_Order_Excel?$filter=CGWContainerNo eq '{transfer_container}'&$select=No,CGWContainerNo",
+        headers=BC_HEADERS, timeout=30,
+    ).json()
+    if existing["value"]:
+        container_check_warning = f"**WARNING** \n\n Transfer order {existing['value'][0]['No']} already exists for {transfer_container}. \n\nPlease check if this container has already been processed."
+    mo.md(container_check_warning)
+    return existing, transfer_container
+
+
+@app.cell(hide_code=True)
 def _(invoice_raw, mo):
     # prompt user to enter a PO number for lines with no PO listed
 
@@ -227,7 +238,7 @@ def _(invoice_raw, mo):
     return (po_inputs,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(invoice_raw, po_inputs):
     # incorporate the user's inputs into the final dataframe
     patched = invoice_raw.copy()
@@ -258,164 +269,368 @@ def _(invoice_raw, po_inputs):
     po_list = camel_invoice["po"].unique().tolist()
     filter_string = "|".join(po_list)
 
-    camel_invoice
-
+    # camel_invoice
     return camel_invoice, filter_string, invoice_dict, po_list
 
 
-@app.cell
-def _(BC_CONFIG, BC_HEADERS, build_bc_odata_base_url, pd, po_list, requests):
+@app.cell(hide_code=True)
+def _(
+    BC_CONFIG,
+    BC_HEADERS,
+    build_bc_odata_base_url,
+    invoice_dict,
+    mo,
+    pd,
+    po_list,
+    requests,
+):
     odata_base = build_bc_odata_base_url(BC_CONFIG)
-    odata_filter = " or ".join(f"Document_No eq '{po}'" for po in po_list)
-    get_response = requests.get(f"{odata_base}/Purchase_Order_Line_Excel?$filter={odata_filter}&$select=Document_Type,Document_No,Line_No,No,Description,Quantity,Qty_to_Receive,Quantity_Received,Requested_Receipt_Date,Planned_Receipt_Date,Expected_Receipt_date,Inbound_Whse_Handling_Time", headers=BC_HEADERS, timeout=30)
-    purlines = pd.DataFrame(get_response.json()["value"])
-    purlines
-    return odata_base, purlines
 
+    # GET all PO headers from these invoices in order to update the Posting Date 
+    inv_header_filter = " or ".join(f"No eq '{po}'" for po in po_list)
+    get_header_response = requests.get(f"{odata_base}/Purchase_Order_Excel?$filter={inv_header_filter}&$select=Document_Type,No,Posting_Date,Status", headers=BC_HEADERS, timeout=30)
+    bc_inv_headers = pd.DataFrame(get_header_response.json()["value"])
+    bc_inv_headers
 
-@app.cell
-def _(DOWNLOADS_DIR, datetime, invoice_dict, mo, pd):
-    # this whole cell will be replaced with the API call
-
-    required_columns = ["Document No.", "Line No.", "Buy-from Vendor No.", "No.", "Expected Receipt Date", "Quantity", "Outstanding Quantity", "Qty. to Receive", "Requested Receipt Date", "Ship Date"]
-
-    # look through downloads folder, find newest `Default*` file, check if it's the right config export, and pull into a df
-    downloads = list(DOWNLOADS_DIR.glob("Default*.xlsx"))
-    newest = max(downloads, key=lambda x: x.stat().st_mtime)
-    today = datetime.today().date()
-    if datetime.fromtimestamp(newest.stat().st_mtime).date() != today:
-        print("Warning: no recent config pkg download found")
-        print("Download fresh file and rerun this cell")
-    purlines = pd.read_excel(newest, header=2)
-    columns = purlines.columns.tolist()
-    try:
-        start = columns.index("Document No.")
-        if columns[start:start + len(required_columns)] != required_columns:
-            raise ValueError
-    except ValueError:
-        print(f"Warning: PURLINES download needed with {required_columns}")
-        print("Download fresh file and rerun this cell")
-
-    purlines = (
-        purlines
-        .assign(
-            **{
-                "Expected Receipt Date": lambda d: pd.to_datetime(d["Expected Receipt Date"]),
-                "Ship Date": lambda d: pd.to_datetime(d["Ship Date"]),
-                "Requested Receipt Date": lambda d: pd.to_datetime(d["Requested Receipt Date"])
-            },
-            po_item_key=lambda d: d["Document No."] + "|" + d["No."].str.replace("-", "", regex=False)
-        )
+    # GET all lines from POs on this invoice
+    # all lines must be pulled, not just the items shipped, because Qty_to_Receive must be zeroed out for items not shipped
+    inv_line_filter = " or ".join(f"Document_No eq '{po}'" for po in po_list)
+    get_line_response = requests.get(f"{odata_base}/Purchase_Order_Line_Excel?$filter={inv_line_filter}&$select=Document_Type,Document_No,Line_No,No,Description,Quantity,Quantity_Received,Qty_to_Receive", headers=BC_HEADERS, timeout=30)
+    bc_inv_lines = (
+        pd.DataFrame(get_line_response.json()["value"])
+        .assign(Outstanding_Quantity=lambda d: d["Quantity"] - d["Quantity_Received"])
+        .assign(New_Qty_to_Receive=0)
+        .assign(po_item_key=lambda d: d["Document_No"] + "|" + d["No"].str.replace("-", "", regex=False))
     )
+    bc_inv_lines
 
-    purlines_confirmation = "Purlines loaded. \n\n"
+    # data validation and confirmation
+    bc_inv_get_confirmation = "Invoice POs loaded from BC. \n\n"
 
-    # check all invoice lines found in purlines file
+    # check all lines from the invoices are present in the data pull and alert user if not
     invoice_keys = set(invoice_dict)
-    purlines_keys = set(purlines["po_item_key"])
-    missing = invoice_keys - purlines_keys
+    bc_inv_lines_keys = set(bc_inv_lines["po_item_key"])
+    missing = invoice_keys - bc_inv_lines_keys
     if missing:
+        bc_inv_get_confirmation += (f"**WARNING** \n\nThese lines not found in BC. Either handle them manually or add to BC and rerun this cell.")
         for po_item in missing:
-            purlines_confirmation += (f"**WARNING** \n\nThese lines not found in purlines file. Either handle them manually or add to BC and rerun this cell. \n\n")
-            purlines_confirmation += (f"{po_item} — {invoice_dict[po_item]} \n\n")
+            bc_inv_get_confirmation += f"  \n{po_item} — {invoice_dict[po_item]}"
 
+    # check all POs released and alert user if not
+    not_released = bc_inv_headers[bc_inv_headers["Status"] != "Released"]
+    if not not_released.empty:
+        bc_inv_get_confirmation += f"**WARNING** \n\n These POs are not Released and cannot be posted against. \n\n Get them released and rerun this cell."
+        for _, header_row in not_released.iterrows():
+            bc_inv_get_confirmation += f"  \n{header_row['No']} status is {header_row['Status']}"
 
-    mo.md(purlines_confirmation)
-    return newest, purlines
+    mo.md(bc_inv_get_confirmation)
+    return bc_inv_headers, bc_inv_lines, missing, odata_base
 
 
 @app.cell
-def _(BC_HEADERS, odata_base, requests):
-    etag = 'W/"JzIwOzE2Nzk5NjYxMTUzODUzMjcyNjcwMTswMDsn"'
+def _(bc_inv_headers, bc_inv_lines, invoice_dict, pd, shipment_date):
+    # logic for how to distribute a single PO-item's shipped qty across multiple PO lines
+    # gets called within update_purlines
+    def fill_qties(group, remaining):
+        group["New_Qty_to_Receive"] = 0 # zero everything to start so that when the loop breaks with open lines remaining, those are already zeroed
+        open_lines = group[group["Outstanding_Quantity"]>0].sort_values("Line_No")
+        if open_lines.empty:
+            group.loc[group["Line_No"].idxmax(), "New_Qty_to_Receive"] = remaining
+        else:
+            for idx, line in open_lines.iterrows():
+                if remaining > line["Outstanding_Quantity"]:
+                    group.loc[idx, "New_Qty_to_Receive"] = line["Outstanding_Quantity"]
+                    remaining = remaining - line["Outstanding_Quantity"]
+                else:
+                    group.loc[idx, "New_Qty_to_Receive"] = remaining
+                    remaining = 0
+                    break
+            if remaining > 0:
+                group.loc[open_lines.index[-1], "New_Qty_to_Receive"] += remaining
+        return group
 
-    patch_headers = {**BC_HEADERS, "Content-Type": "application/json", "If-Match": etag}
+    # function that works through the PO_items on this container and call fill_qties to distribute the qties
+    def update_purlines(invoice_dict, filtered_purlines): 
+        result = bc_inv_lines.copy()
+        shipped = result["po_item_key"].isin(invoice_dict) # PO-items on this container
+        for po_item_key, lines in result[shipped].groupby("po_item_key"):
+            qty_shipped = invoice_dict[po_item_key]
+            filled = fill_qties(lines, qty_shipped)
+            result.loc[filled.index, "New_Qty_to_Receive"] = filled["New_Qty_to_Receive"]
+        return result
 
-    test = requests.patch(
-        f"{odata_base}/Purchase_Order_Line_Excel(Document_Type='Order',Document_No='PO0008842',Line_No=10000)",
-        headers=patch_headers,
-        json={"Qty_to_Receive": 0},
-        timeout=30,
+    # if shipment_date in previous month, post on first day of current month instead
+    today = pd.Timestamp.today().normalize()
+    if shipment_date.month != today.month:
+        posting_date = today.replace(day=1).strftime("%Y-%m-%d")
+    else:
+        posting_date = shipment_date.strftime("%Y-%m-%d")
+    patch_inv_headers = (
+        bc_inv_headers
+        .assign(Posting_Date=posting_date)
     )
+    patch_inv_headers
 
-    test.status_code, test.text
+    patch_inv_lines = update_purlines(invoice_dict, bc_inv_lines)
+
+    # guard for testing:
+    overshipped = patch_inv_lines[patch_inv_lines["New_Qty_to_Receive"] > patch_inv_lines["Outstanding_Quantity"]]
+    patch_inv_lines = patch_inv_lines.drop(overshipped.index)
+    # end test guard
+
+    patch_inv_lines
+    return patch_inv_headers, patch_inv_lines, posting_date
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    # keep API patch behind button confirmation
+
+    update_bc_inv_button = mo.ui.run_button(label="Run")
+    mo.md(f"Update posting dates and Qty to Receive in BC? \n\n {update_bc_inv_button}")
+    return (update_bc_inv_button,)
+
+
+@app.cell(hide_code=True)
+def _(
+    BC_HEADERS,
+    mo,
+    odata_base,
+    patch_inv_headers,
+    patch_inv_lines,
+    requests,
+    update_bc_inv_button,
+):
+    bc_inv_patch_confirmation = "Posting dates and qties not yet updated in BC"
+
+    if update_bc_inv_button.value:
+        errors = []
+
+        # PATCH Posting_Date on PO headers
+        for _, patch_header_row in patch_inv_headers.iterrows():
+            patch_header_response = requests.patch(
+                f"{odata_base}/Purchase_Order_Excel(Document_Type='{patch_header_row['Document_Type']}',No='{patch_header_row['No']}')",
+                headers={**BC_HEADERS, "Content-Type": "application/json", "If-Match": patch_header_row["@odata.etag"]},
+                json={"Posting_Date": patch_header_row["Posting_Date"]},
+                timeout=30,
+            )
+            if patch_header_response.status_code != 200:
+                errors.append(f"{patch_header_row['No']}: {patch_header_response.status_code} — {patch_header_response.text}")
+
+        # PATCH Qty_to_Receive on PO lines
+        for _, patch_line_row in patch_inv_lines.iterrows():
+            if patch_line_row["Qty_to_Receive"] == patch_line_row["New_Qty_to_Receive"]:
+                continue
+            patch_inv_line_response = requests.patch(
+                f"{odata_base}/Purchase_Order_Line_Excel(Document_Type='{patch_line_row['Document_Type']}',Document_No='{patch_line_row['Document_No']}',Line_No={patch_line_row['Line_No']})",
+                headers={**BC_HEADERS, "Content-Type": "application/json", "If-Match": patch_line_row["@odata.etag"]},
+                json={"Qty_to_Receive": patch_line_row["New_Qty_to_Receive"]},
+                timeout=30,
+            )
+            if patch_inv_line_response.status_code != 200:
+                errors.append(f"{patch_line_row['Document_No']}: {patch_inv_line_response.status_code} — {patch_inv_line_response.text}")
+
+        if errors:
+            bc_inv_patch_confirmation = "**ERRORS:**\n\n" + "\n\n".join(errors)
+        else:
+            bc_inv_patch_confirmation = "All updates applied."
+
+    mo.md(bc_inv_patch_confirmation)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    open_bc_po_rcv_button = mo.ui.run_button(label="Open BC")
+    mo.md(f"Please verify qties against the list below and post receipts in BC \n\n {open_bc_po_rcv_button}")
+    return (open_bc_po_rcv_button,)
+
+
+@app.cell(hide_code=True)
+def _(BC_BASE, filter_string, open_bc_po_rcv_button, webbrowser):
+    if open_bc_po_rcv_button.value:
+        bc_po_rcv_url = f"{BC_BASE}&page=9307&filter='No.' IS '{filter_string}'"
+        webbrowser.open(bc_po_rcv_url)
+    return
+
+
+@app.cell(hide_code=True)
+def _(camel_invoice, mo, open_bc_po_rcv_button, time):
+    blocks = []
+    if open_bc_po_rcv_button.value:
+        display_df = camel_invoice.groupby(["po", "item"])["qty_shipped"].sum().reset_index()
+        for po_num, items_df in display_df.groupby("po"):
+            ...
+            rows = ""
+            for _, q in items_df.iterrows():
+                rows += f"<tr><td>{q['item']}</td><td style='text-align:right'>{q['qty_shipped']}</td></tr>"
+            po_table = f"<table style='border:none;border-collapse:collapse'>{rows}</table>"
+            blocks.append(f"<details key='{po_num}-{time.time()}' open><summary>{po_num}</summary>{po_table}</details>")
+    style = "<style>details { margin: 0; } details table { margin: 0; } details summary { padding: 0; }</style>" 
+    mo.md(style + "\n".join(blocks))
+    return
+
+
+@app.cell(hide_code=True)
+def _(
+    BC_HEADERS,
+    existing,
+    mo,
+    odata_base,
+    pd,
+    posting_date,
+    requests,
+    shipment_date,
+    transfer_container,
+):
+    transfer_header_confirmation = f"Transfer order already exists for {transfer_container}"
+
+    if not existing["value"]:
+    
+        shipping_time = "6W"
+        receipt_date = (shipment_date + pd.Timedelta(weeks=int(shipping_time.replace("W", "")))).strftime("%Y-%m-%d")
+            
+        transfer_header_post = requests.post(
+            f"{odata_base}/Transfer_Order_Excel",
+            headers={**BC_HEADERS, "Content-Type": "application/json"},
+            json={
+                "Transfer_from_Code": "06",
+                "Transfer_to_Code": "01",
+                "Posting_Date": posting_date,
+                "CGWContainerNo": transfer_container,
+                "Shipment_Date": shipment_date.strftime("%Y-%m-%d"),
+                "Shipping_Time": shipping_time,
+                "Receipt_Date": receipt_date,
+            },
+            timeout=30,
+        )
+        transfer_no = transfer_header_post.json()["No"]
+        transfer_header_confirmation = f"Transfer order {transfer_no} created"
+
+    mo.md(transfer_header_confirmation)
+    return (transfer_no,)
+
+
+@app.cell(hide_code=True)
+def _(patch_inv_lines):
+    # aggregate final list of items that were received in BC for transfer
+    transfer = (
+        patch_inv_lines[patch_inv_lines["New_Qty_to_Receive"] > 0]
+        .groupby("No")["New_Qty_to_Receive"]
+        .sum()
+        .astype(int)
+        .sort_index()
+    )
+    transfer
+
+    return (transfer,)
+
+
+@app.cell(hide_code=True)
+def _(invoice_dict, missing):
+    missing_reminder = None
+    if missing:
+        missing_reminder = "**Reminder — these items were not found in BC and are not included in the transfer:**\n\n"
+        missing_reminder += "\n".join(f"{po_item} — {invoice_dict[po_item]}" for po_item in missing)
+    missing_reminder
+    return
+
+
+@app.cell(hide_code=True)
+def _(BC_HEADERS, mo, odata_base, requests, transfer, transfer_no):
+    transfer_line_confirmation = None
+
+    transfer_line_errors = []
+
+    for item_no, qty in transfer.items():
+    
+        # add item as new line on transfer order
+        transfer_line_item = requests.post(
+            f"{odata_base}/CGWTransferOrder",
+            headers={**BC_HEADERS, "Content-Type": "application/json"},
+            json={
+                "TransferOrderNumber": transfer_no,
+                "ItemNo": item_no,
+            },
+            timeout=30,
+        )
+        if transfer_line_item.status_code != 201:
+            transfer_line_errors.append(f"{item_no}: {transfer_line_item.status_code} — {transfer_line_item.text}")
+            continue
+        line_no = transfer_line_item.json()["TransferOrderLineNumber"]
+
+        # get etag and line number
+        etag = requests.get(
+        f"{odata_base}/CGWTransferOrder(TransferOrderNumber='{transfer_no}',TransferOrderLineNumber={line_no})",
+        headers=BC_HEADERS, timeout=30,
+    ).json()["@odata.etag"]
+
+        # enter qty on transfer line 
+        transfer_line_qty = requests.patch(
+            f"{odata_base}/CGWTransferOrder(TransferOrderNumber='{transfer_no}',TransferOrderLineNumber={line_no})",
+            headers={**BC_HEADERS, "Content-Type": "application/json", "If-Match": etag},
+            json={"TransferOrderQty": int(qty)},
+            timeout=30,
+        )
+        if transfer_line_qty.status_code != 200:
+            transfer_line_errors.append(f"{item_no} qty: {transfer_line_qty.status_code} — {transfer_line_qty.text}")
+
+    if transfer_line_errors:
+        transfer_line_confirmation = "  \n".join(transfer_line_errors)
+    else:
+        transfer_line_confirmation = "Transfer order {transfer_no} created in BC. Please review and ship in BC."
+    mo.md(transfer_line_confirmation)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    open_transfer_order_button = mo.ui.run_button(label="Review transfer order")
+    open_transfer_order_button
+    return (open_transfer_order_button,)
+
+
+@app.cell(hide_code=True)
+def _(BC_BASE, open_transfer_order_button, transfer_no, webbrowser):
+    if open_transfer_order_button.value:
+        bc_transfer_url = f"{BC_BASE}&page=5740&filter='No.' IS '{transfer_no}'"
+        webbrowser.open(bc_transfer_url)
+    return
+
+
+@app.cell(hide_code=True)
+def _(
+    TRANSIT_DIR,
+    files,
+    mo,
+    open_transfer_order_button,
+    shipment_date,
+    transfer_container,
+    transfer_no,
+):
+    filing_display = "Files not yet saved to In Transit folder"
+    if open_transfer_order_button.value:
+        folder_name = f"{shipment_date.strftime('%y-%m-%d')} {transfer_container} {transfer_no}"
+        dest = TRANSIT_DIR / folder_name
+        dest.mkdir(exist_ok=True)
+        for file in files.value:
+            (dest / file.name).write_bytes(file.contents)
+        filing_display = "Files saved to In Transit folder"
+    mo.md(filing_display)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Push back past-due lines
+    """)
     return
 
 
 @app.cell
-def _(
-    ATLCA_BUFFER_DAYS,
-    CAMEL_BUFFER_DAYS,
-    pd,
-    po_list,
-    purlines,
-    shipment_date,
-):
-    # filter to only lines shipped and/or past-due
-
-    shipped_pos = purlines["Document No."].isin(po_list)
-
-    atlca_past_due = (
-        (purlines["Buy-from Vendor No."] == "ATLCA")
-        & (purlines["Requested Receipt Date"] < shipment_date + pd.Timedelta(days=ATLCA_BUFFER_DAYS))
-        & (purlines["Outstanding Quantity"] > 0)
-    )
-    camel_past_due = (
-        (purlines["Buy-from Vendor No."] == "CAMEL")
-        & (purlines["Requested Receipt Date"] < shipment_date + pd.Timedelta(days=CAMEL_BUFFER_DAYS))
-        & (purlines["Outstanding Quantity"] > 0)
-    )
-
-    filtered_purlines = (
-        purlines
-        .assign(past_due=atlca_past_due | camel_past_due)
-        .loc[lambda d: shipped_pos | d["past_due"]]
-        .reset_index(drop=True)
-    )
-
-    # filtered_purlines
-    return (filtered_purlines,)
-
-
-@app.cell
-def _(mo):
-    # will still need button for API version
-    # should only patch back when confirmed all lines are good
-
-    open_file_button = mo.ui.run_button(label="Open files for upload")
-    open_file_button
-    return (open_file_button,)
-
-
-@app.cell
-def _(
-    ATLCA_BUFFER_DAYS,
-    CAMEL_BUFFER_DAYS,
-    TRANSIT_DAYS,
-    filtered_purlines,
-    invoice_dict,
-    mo,
-    newest,
-    open_file_button,
-    os,
-    pd,
-):
-    def fill_qties(group, remaining):
-        group["Qty. to Receive"] = 0 # zero everything to start so that when the loop breaks with open lines remaining, those are already zeroed
-        open_lines = group[group["Outstanding Quantity"]>0].sort_values("Line No.")
-        if open_lines.empty:
-            group.loc[group["Line No."].idxmax(), "Qty. to Receive"] = remaining
-        else:
-            for idx, line in open_lines.iterrows():
-                if remaining > line["Outstanding Quantity"]:
-                    group.loc[idx, "Qty. to Receive"] = line["Outstanding Quantity"]
-                    remaining = remaining - line["Outstanding Quantity"]
-                else:
-                    group.loc[idx, "Qty. to Receive"] = remaining
-                    remaining = 0
-                    break
-            if remaining > 0:
-                group.loc[open_lines.index[-1], "Qty. to Receive"] += remaining
-        return group
+def _(ATLCA_BUFFER_DAYS, CAMEL_BUFFER_DAYS, TRANSIT_DAYS, pd):
+    # TODO past-due date push
 
     def update_date(df):
         is_camel = df["Buy-from Vendor No."] == "CAMEL"
@@ -425,110 +640,53 @@ def _(
         df.loc[~is_camel, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=ATLCA_BUFFER_DAYS + TRANSIT_DAYS) # have to explicitly write Expected Receipt Date as programmatic update doesn't trigger recalc
         return df
 
-    def update_purlines(invoice_dict, filtered_purlines): # dict, df
-        result = filtered_purlines.copy()
-        result["Qty. to Receive"] = 0 # zero everything first
 
-        shipped = result["po_item_key"].isin(invoice_dict) # PO-items on this container
-        for po_item_key, lines in result[shipped].groupby("po_item_key"):
-            qty_shipped = invoice_dict[po_item_key]
-            filled = fill_qties(lines, qty_shipped)
-            result.loc[filled.index, "Qty. to Receive"] = filled["Qty. to Receive"]
 
-        past_due = result["past_due"]
-        result.loc[past_due] = update_date(result.loc[past_due].copy())
-
-        return result
-
-    output = update_purlines(invoice_dict, filtered_purlines)
-
-    if open_file_button.value:
-        output.to_excel("output.xlsx", index=False)
-        os.startfile("output.xlsx")
-        os.startfile(str(newest))
-        mo.md("Opening files for config pkg upload...")
-    return (output,)
+    return
 
 
 @app.cell
-def _(mo):
-    open_po_button = mo.ui.run_button(label="Config pkg uploaded? Press this button to go to PO list")
-    open_po_button
-    return (open_po_button,)
+def _():
 
+    # revisit this logic later for the past-due date push
 
-@app.cell(hide_code=True)
-def _(BC_BASE, filter_string, open_po_button, webbrowser):
-    if open_po_button.value:
-        bc_url = f"{BC_BASE}&page=9307&filter='No.' IS '{filter_string}'"
-        webbrowser.open(bc_url)
+    # Requested_Receipt_Date,Planned_Receipt_Date,Expected_Receipt_date,Inbound_Whse_Handling_Time
+
+    # filter to only lines shipped and/or past-due
+
+    # shipped_pos = purlines["Document No."].isin(po_list)
+
+    # atlca_past_due = (
+    #     (purlines["Buy-from Vendor No."] == "ATLCA")
+    #     & (purlines["Requested Receipt Date"] < shipment_date + pd.Timedelta(days=ATLCA_BUFFER_DAYS))
+    #     & (purlines["Outstanding_Quantity"] > 0)
+    # )
+    # camel_past_due = (
+    #     (purlines["Buy-from Vendor No."] == "CAMEL")
+    #     & (purlines["Requested Receipt Date"] < shipment_date + pd.Timedelta(days=CAMEL_BUFFER_DAYS))
+    #     & (purlines["Outstanding_Quantity"] > 0)
+    # )
+
+    # filtered_purlines = (
+    #     purlines
+    #     .assign(past_due=atlca_past_due | camel_past_due)
+    #     .loc[lambda d: shipped_pos | d["past_due"]]
+    #     .reset_index(drop=True)
+    # )
+
+    # filtered_purlines
     return
 
 
-@app.cell(hide_code=True)
-def _(camel_invoice, mo, time):
-    blocks = []
-    display_df = camel_invoice.groupby(["po", "item"])["qty_shipped"].sum().reset_index()
-    for po_num, items_df in display_df.groupby("po"):
-        ...
-        rows = ""
-        for _, q in items_df.iterrows():
-            rows += f"<tr><td>{q['item']}</td><td style='text-align:right'>{q['qty_shipped']}</td></tr>"
-        po_table = f"<table style='border:none;border-collapse:collapse'>{rows}</table>"
-        blocks.append(f"<details key='{po_num}-{time.time()}' open><summary>{po_num}</summary>{po_table}</details>")
-
-    style = "<style>details { margin: 0; } details table { margin: 0; } details summary { padding: 0; }</style>"
-
-    mo.md(style + "\n".join(blocks))
+@app.cell
+def _():
+    # TODO add lines to close
     return
 
 
-@app.cell(hide_code=True)
-def _(output):
-    transfer = (
-        output[output["Qty. to Receive"] > 0]
-        .groupby("No.")["Qty. to Receive"]
-        .sum()
-        .sort_index()
-    )
-    transfer
-    return (transfer,)
-
-
-@app.cell(hide_code=True)
-def _(container, mo, pyperclip, transfer):
-    item_list = "\n".join(str(item) for item in transfer.index)
-    copy_items_button = mo.ui.button(label="item list", on_click=lambda _: pyperclip.copy(item_list))
-
-    transfer_container = f"CAMEL {container}"
-    copy_container_button = mo.ui.button(label=transfer_container, on_click=lambda _: pyperclip.copy(transfer_container))
-
-    transfer_number = None
-    transfer_number_input = mo.ui.text(placeholder="Transfer order number")
-
-    mo.md(f"**Copy container number** — {copy_container_button} \n\n**Paste transfer number** — {transfer_number_input} \n\n **Copy item list** — {copy_items_button}")
-    return transfer_container, transfer_number_input
-
-
-@app.cell(hide_code=True)
-def _(
-    TRANSIT_DIR,
-    files,
-    mo,
-    shipment_date,
-    transfer_container,
-    transfer_number_input,
-):
-    filing_display = "Files not yet saved to In Transit folder"
-    if transfer_number_input.value: 
-        folder_name = f"{shipment_date.strftime('%y-%m-%d')} {transfer_container} {transfer_number_input.value}"
-        dest = TRANSIT_DIR / folder_name
-        dest.mkdir(exist_ok=True)
-        for file in files.value:
-            (dest / file.name).write_bytes(file.contents)
-        filing_display = "Files saved to In Transit folder"
-
-    mo.md(filing_display)
+@app.cell
+def _():
+    # TODO add lines to adjust
     return
 
 
