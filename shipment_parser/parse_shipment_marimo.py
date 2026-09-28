@@ -6,6 +6,24 @@ app = marimo.App(width="medium")
 
 @app.cell
 def _():
+    #TODO check 06 is empty afterwards
+    return
+
+
+@app.cell
+def _():
+    # TODO add lines to adjust
+    return
+
+
+@app.cell
+def _():
+    # TODO add lines to close
+    return
+
+
+@app.cell
+def _():
     #TODO add list of discrepancies between total receipts and sales orders
     return
 
@@ -28,15 +46,19 @@ def _():
     return
 
 
+@app.cell
+def _():
+    #TODO add overreceipt guard
+    return
+
+
 @app.cell(hide_code=True)
 def _():
     import marimo as mo
     import io
     import json
-    import os
     import requests
     import sys
-    import subprocess
     import time
     import webbrowser
 
@@ -45,7 +67,6 @@ def _():
 
     import pandas as pd
     import pdfplumber
-    import pyperclip
     import re
 
     sys.path.insert(0, str(Path(__file__).parent / "bc-mirror"))
@@ -207,7 +228,7 @@ def _(BC_HEADERS, container, mo, odata_base, requests):
     vendor = "CAMEL"
     transfer_container = f"{vendor} {container}"
 
-    container_check_warning = None
+    container_check_warning = ""
     existing = requests.get(
         f"{odata_base}/Transfer_Order_Excel?$filter=CGWContainerNo eq '{transfer_container}'&$select=No,CGWContainerNo",
         headers=BC_HEADERS, timeout=30,
@@ -269,7 +290,7 @@ def _(invoice_raw, po_inputs):
     po_list = camel_invoice["po"].unique().tolist()
     filter_string = "|".join(po_list)
 
-    # camel_invoice
+    camel_invoice
     return camel_invoice, filter_string, invoice_dict, po_list
 
 
@@ -327,7 +348,7 @@ def _(
     return bc_inv_headers, bc_inv_lines, missing, odata_base
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(bc_inv_headers, bc_inv_lines, invoice_dict, pd, shipment_date):
     # logic for how to distribute a single PO-item's shipped qty across multiple PO lines
     # gets called within update_purlines
@@ -373,12 +394,7 @@ def _(bc_inv_headers, bc_inv_lines, invoice_dict, pd, shipment_date):
 
     patch_inv_lines = update_purlines(invoice_dict, bc_inv_lines)
 
-    # guard for testing:
-    overshipped = patch_inv_lines[patch_inv_lines["New_Qty_to_Receive"] > patch_inv_lines["Outstanding_Quantity"]]
-    patch_inv_lines = patch_inv_lines.drop(overshipped.index)
-    # end test guard
-
-    patch_inv_lines
+    patch_inv_lines[["Document_No",   "No", "Description", "Outstanding_Quantity","Qty_to_Receive", "New_Qty_to_Receive", "Quantity", "Quantity_Received",  "Line_No","po_item_key", "@odata.etag"]]
     return patch_inv_headers, patch_inv_lines, posting_date
 
 
@@ -387,7 +403,7 @@ def _(mo):
     # keep API patch behind button confirmation
 
     update_bc_inv_button = mo.ui.run_button(label="Run")
-    mo.md(f"Update posting dates and Qty to Receive in BC? \n\n {update_bc_inv_button}")
+    mo.md(f"Update BC? \n\n(This will update Posting Dates, Qty to Receive, and also create a transfer order for the shipment.) \n\n {update_bc_inv_button}")
     return (update_bc_inv_button,)
 
 
@@ -406,7 +422,7 @@ def _(
     if update_bc_inv_button.value:
         errors = []
 
-        # PATCH Posting_Date on PO headers
+        # update Posting_Date on PO headers
         for _, patch_header_row in patch_inv_headers.iterrows():
             patch_header_response = requests.patch(
                 f"{odata_base}/Purchase_Order_Excel(Document_Type='{patch_header_row['Document_Type']}',No='{patch_header_row['No']}')",
@@ -417,7 +433,7 @@ def _(
             if patch_header_response.status_code != 200:
                 errors.append(f"{patch_header_row['No']}: {patch_header_response.status_code} — {patch_header_response.text}")
 
-        # PATCH Qty_to_Receive on PO lines
+        # update Qty_to_Receive on PO lines
         for _, patch_line_row in patch_inv_lines.iterrows():
             if patch_line_row["Qty_to_Receive"] == patch_line_row["New_Qty_to_Receive"]:
                 continue
@@ -456,6 +472,7 @@ def _(BC_BASE, filter_string, open_bc_po_rcv_button, webbrowser):
 
 @app.cell(hide_code=True)
 def _(camel_invoice, mo, open_bc_po_rcv_button, time):
+    # display shipped items and qties for verification
     blocks = []
     if open_bc_po_rcv_button.value:
         display_df = camel_invoice.groupby(["po", "item"])["qty_shipped"].sum().reset_index()
@@ -482,30 +499,33 @@ def _(
     requests,
     shipment_date,
     transfer_container,
+    update_bc_inv_button,
 ):
-    transfer_header_confirmation = f"Transfer order already exists for {transfer_container}"
+    transfer_header_confirmation = "No transfer created yet."
 
-    if not existing["value"]:
-    
-        shipping_time = "6W"
-        receipt_date = (shipment_date + pd.Timedelta(weeks=int(shipping_time.replace("W", "")))).strftime("%Y-%m-%d")
-            
-        transfer_header_post = requests.post(
-            f"{odata_base}/Transfer_Order_Excel",
-            headers={**BC_HEADERS, "Content-Type": "application/json"},
-            json={
-                "Transfer_from_Code": "06",
-                "Transfer_to_Code": "01",
-                "Posting_Date": posting_date,
-                "CGWContainerNo": transfer_container,
-                "Shipment_Date": shipment_date.strftime("%Y-%m-%d"),
-                "Shipping_Time": shipping_time,
-                "Receipt_Date": receipt_date,
-            },
-            timeout=30,
-        )
-        transfer_no = transfer_header_post.json()["No"]
-        transfer_header_confirmation = f"Transfer order {transfer_no} created"
+    if update_bc_inv_button.value:
+        if existing["value"]:
+            transfer_no = existing['value'][0]['No']
+            transfer_header_confirmation = f"Transfer order already exists for {transfer_container}. Please double check."
+        else:
+            shipping_time = "6W"
+            receipt_date = (shipment_date + pd.Timedelta(weeks=int(shipping_time.replace("W", "")))).strftime("%Y-%m-%d")
+            transfer_header_post = requests.post(
+                f"{odata_base}/Transfer_Order_Excel",
+                headers={**BC_HEADERS, "Content-Type": "application/json"},
+                json={
+                    "Transfer_from_Code": "06",
+                    "Transfer_to_Code": "01",
+                    "Posting_Date": posting_date,
+                    "CGWContainerNo": transfer_container,
+                    "Shipment_Date": shipment_date.strftime("%Y-%m-%d"),
+                    "Shipping_Time": shipping_time,
+                    "Receipt_Date": receipt_date,
+                },
+                timeout=30,
+            )
+            transfer_no = transfer_header_post.json()["No"]
+            transfer_header_confirmation = f"Transfer order {transfer_no} created"
 
     mo.md(transfer_header_confirmation)
     return (transfer_no,)
@@ -522,7 +542,6 @@ def _(patch_inv_lines):
         .sort_index()
     )
     transfer
-
     return (transfer,)
 
 
@@ -537,48 +556,59 @@ def _(invoice_dict, missing):
 
 
 @app.cell(hide_code=True)
-def _(BC_HEADERS, mo, odata_base, requests, transfer, transfer_no):
-    transfer_line_confirmation = None
+def _(
+    BC_HEADERS,
+    existing,
+    mo,
+    odata_base,
+    requests,
+    transfer,
+    transfer_no,
+    update_bc_inv_button,
+):
+    transfer_line_confirmation = "No transfer order created yet."
 
-    transfer_line_errors = []
+    if update_bc_inv_button.value and not existing["value"]:
+        transfer_line_errors = []
 
-    for item_no, qty in transfer.items():
-    
-        # add item as new line on transfer order
-        transfer_line_item = requests.post(
-            f"{odata_base}/CGWTransferOrder",
-            headers={**BC_HEADERS, "Content-Type": "application/json"},
-            json={
-                "TransferOrderNumber": transfer_no,
-                "ItemNo": item_no,
-            },
-            timeout=30,
-        )
-        if transfer_line_item.status_code != 201:
-            transfer_line_errors.append(f"{item_no}: {transfer_line_item.status_code} — {transfer_line_item.text}")
-            continue
-        line_no = transfer_line_item.json()["TransferOrderLineNumber"]
+        for item_no, qty in transfer.items():
 
-        # get etag and line number
-        etag = requests.get(
-        f"{odata_base}/CGWTransferOrder(TransferOrderNumber='{transfer_no}',TransferOrderLineNumber={line_no})",
-        headers=BC_HEADERS, timeout=30,
-    ).json()["@odata.etag"]
+            # add item as new line on transfer order
+            transfer_line_item = requests.post(
+                f"{odata_base}/CGWTransferOrder",
+                headers={**BC_HEADERS, "Content-Type": "application/json"},
+                json={
+                    "TransferOrderNumber": transfer_no,
+                    "ItemNo": item_no,
+                },
+                timeout=30,
+            )
+            if transfer_line_item.status_code != 201:
+                transfer_line_errors.append(f"{item_no}: {transfer_line_item.status_code} — {transfer_line_item.text}")
+                continue
+            line_no = transfer_line_item.json()["TransferOrderLineNumber"]
 
-        # enter qty on transfer line 
-        transfer_line_qty = requests.patch(
+            # get etag and line number
+            etag = requests.get(
             f"{odata_base}/CGWTransferOrder(TransferOrderNumber='{transfer_no}',TransferOrderLineNumber={line_no})",
-            headers={**BC_HEADERS, "Content-Type": "application/json", "If-Match": etag},
-            json={"TransferOrderQty": int(qty)},
-            timeout=30,
-        )
-        if transfer_line_qty.status_code != 200:
-            transfer_line_errors.append(f"{item_no} qty: {transfer_line_qty.status_code} — {transfer_line_qty.text}")
+            headers=BC_HEADERS, timeout=30,
+        ).json()["@odata.etag"]
 
-    if transfer_line_errors:
-        transfer_line_confirmation = "  \n".join(transfer_line_errors)
-    else:
-        transfer_line_confirmation = "Transfer order {transfer_no} created in BC. Please review and ship in BC."
+            # enter qty on transfer line 
+            transfer_line_qty = requests.patch(
+                f"{odata_base}/CGWTransferOrder(TransferOrderNumber='{transfer_no}',TransferOrderLineNumber={line_no})",
+                headers={**BC_HEADERS, "Content-Type": "application/json", "If-Match": etag},
+                json={"TransferOrderQty": int(qty)},
+                timeout=30,
+            )
+            if transfer_line_qty.status_code != 200:
+                transfer_line_errors.append(f"{item_no} qty: {transfer_line_qty.status_code} — {transfer_line_qty.text}")
+
+        if transfer_line_errors:
+            transfer_line_confirmation = "  \n".join(transfer_line_errors)
+        else:
+            transfer_line_confirmation = f"Transfer order {transfer_no} created in BC. Please review and ship in BC."
+
     mo.md(transfer_line_confirmation)
     return
 
@@ -675,18 +705,6 @@ def _():
     # )
 
     # filtered_purlines
-    return
-
-
-@app.cell
-def _():
-    # TODO add lines to close
-    return
-
-
-@app.cell
-def _():
-    # TODO add lines to adjust
     return
 
 

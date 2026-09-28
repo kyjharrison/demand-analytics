@@ -14,7 +14,7 @@ from error_alert import send_alert
 
 # set up logger
 handler = TimedRotatingFileHandler(
-    Path(__file__).parent.parent / "logs/mirror_refresh.log",
+    Path(__file__).parent / "logs/mirror_refresh.log",
     when="midnight",
     backupCount=10,
 )
