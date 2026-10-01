@@ -160,12 +160,12 @@ def build_clean_mirror():
         "item_ledger_entries.sql",
         "items.sql",
         "posted_assembly_orders.sql",
-        "posted_sales_invoice_lines.sql",
         "purchase_lines.sql",
         "sales_lines.sql",
         "transfer_lines.sql",
         "warehouse_entries.sql",
-        
+
+        "abc_flap.sql",
         "skus.sql", # must happen last, depends on item_ledger_entries, sales_lines, purchase_lines, and transfer_lines
     ]
 
