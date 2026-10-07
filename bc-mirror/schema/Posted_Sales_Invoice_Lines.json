@@ -1,0 +1,11 @@
+{
+  "endpoint": "Posted_Sales_Invoice_Lines",
+  "api_type": "odata",
+  "refresh_mode": "upsert",
+  "watermark_column": "Document_No",
+  "watermark_type": "string",
+  "id_column": "Document_No",
+  "secondary_id": "Line_No",
+  "tertiary_id": null,
+  "query_param": null
+}
