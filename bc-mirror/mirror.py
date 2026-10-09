@@ -160,6 +160,7 @@ def build_clean_mirror():
         "item_ledger_entries.sql",
         "items.sql",
         "posted_assembly_orders.sql",
+        "posted_sales_invoice_lines.sql",
         "purchase_lines.sql",
         "sales_lines.sql",
         "transfer_lines.sql",
