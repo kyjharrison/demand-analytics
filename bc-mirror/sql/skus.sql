@@ -29,7 +29,10 @@ LEFT JOIN (
 	AND oh.location = sku.Location_Code 
 
 LEFT JOIN (
-	SELECT item, location, SUM(qty_outstanding) AS qty_on_po
+	SELECT 
+		item, 
+		CASE WHEN location = '06' THEN '01' ELSE location END AS location,
+		SUM(qty_outstanding) AS qty_on_po
 	FROM purchase_lines
 	GROUP BY item, location
 ) po
