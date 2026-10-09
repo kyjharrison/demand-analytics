@@ -69,13 +69,13 @@ def _():
     import pdfplumber
     import re
 
-    sys.path.insert(0, str(Path(__file__).parent / "bc-mirror"))
+    sys.path.insert(0, str(Path(__file__).parent.parent / "bc-mirror"))
     from bc_keyvault_auth import build_bc_odata_base_url, get_bc_connection
 
     BC_CONFIG, BC_HEADERS = get_bc_connection()
     base = build_bc_odata_base_url(BC_CONFIG)
 
-    with open(Path(__file__).parent / "config.json") as config:
+    with open(Path(__file__).parent.parent / "config.json") as config:
         config = json.load(config)
 
     TRANSIT_DIR = Path(config["TRANSIT_DIR"])
@@ -118,6 +118,15 @@ def _(mo):
     files = mo.ui.file(multiple=True, kind="area")
     files
     return (files,)
+
+
+@app.cell(hide_code=True)
+def _():
+    # vendor_dropdown = mo.ui.dropdown(
+    # options=["CAMEL", "DIATH"], value="CAMEL", label="Vendor"
+    # )
+    # vendor_dropdown
+    return
 
 
 @app.cell(hide_code=True)
