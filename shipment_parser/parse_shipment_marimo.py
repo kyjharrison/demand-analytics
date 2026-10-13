@@ -6,19 +6,7 @@ app = marimo.App(width="medium")
 
 @app.cell
 def _():
-    #TODO check 06 is empty afterwards
-    return
-
-
-@app.cell
-def _():
-    # TODO add lines to adjust
-    return
-
-
-@app.cell
-def _():
-    # TODO add lines to close
+    #TODO add auto-open filtered list of orders to closeoutlist of orders to closeout and auto-open filtered list 
     return
 
 
@@ -30,7 +18,7 @@ def _():
 
 @app.cell
 def _():
-    #TODO add auto-open filtered list of orders to closeoutlist of orders to closeout and auto-open filtered list 
+    # TODO add lines to adjust
     return
 
 
@@ -81,17 +69,10 @@ def _():
     TRANSIT_DIR = Path(config["TRANSIT_DIR"])
     DOWNLOADS_DIR = Path(config["DOWNLOADS_DIR"])
     BC_BASE = config["BC_BASE"]
-
-    CAMEL_BUFFER_DAYS = 84
-    ATLCA_BUFFER_DAYS = 7
-    TRANSIT_DAYS = 42
     return (
-        ATLCA_BUFFER_DAYS,
         BC_BASE,
         BC_CONFIG,
         BC_HEADERS,
-        CAMEL_BUFFER_DAYS,
-        TRANSIT_DAYS,
         TRANSIT_DIR,
         build_bc_odata_base_url,
         io,
@@ -118,15 +99,6 @@ def _(mo):
     files = mo.ui.file(multiple=True, kind="area")
     files
     return (files,)
-
-
-@app.cell(hide_code=True)
-def _():
-    # vendor_dropdown = mo.ui.dropdown(
-    # options=["CAMEL", "DIATH"], value="CAMEL", label="Vendor"
-    # )
-    # vendor_dropdown
-    return
 
 
 @app.cell(hide_code=True)
@@ -227,7 +199,7 @@ def _(container_picker, containers, date_picker, invoice_dates, mo):
     shipment_date, container
 
     mo.md(f"**Shipment date:** {date_str} \n\n**Container:** {container}")
-    return container, shipment_date
+    return container, date_str, shipment_date
 
 
 @app.cell(hide_code=True)
@@ -576,9 +548,10 @@ def _(
     update_bc_inv_button,
 ):
     transfer_line_confirmation = "No transfer order created yet."
+    transfer_line_errors = []
+    failed_items = []
 
     if update_bc_inv_button.value and not existing["value"]:
-        transfer_line_errors = []
 
         for item_no, qty in transfer.items():
 
@@ -594,6 +567,7 @@ def _(
             )
             if transfer_line_item.status_code != 201:
                 transfer_line_errors.append(f"{item_no}: {transfer_line_item.status_code} — {transfer_line_item.text}")
+                failed_items.append({"Item": item_no, "Qty": qty})
                 continue
             line_no = transfer_line_item.json()["TransferOrderLineNumber"]
 
@@ -612,13 +586,24 @@ def _(
             )
             if transfer_line_qty.status_code != 200:
                 transfer_line_errors.append(f"{item_no} qty: {transfer_line_qty.status_code} — {transfer_line_qty.text}")
+                failed_items.append({"Item": item_no, "Qty": qty})
 
-        if transfer_line_errors:
-            transfer_line_confirmation = "  \n".join(transfer_line_errors)
+        if failed_items:
+            failed_item_display = "  \n".join(failed_items)
+            transfer_line_confirmation = f"**WARNING — MANUAL ENTRY NEEDED:** \n\n Automatic entry failed for these items: \n\n  {failed_item_display} \n\n Please review and ship in BC."
         else:
             transfer_line_confirmation = f"Transfer order {transfer_no} created in BC. Please review and ship in BC."
 
     mo.md(transfer_line_confirmation)
+    return (transfer_line_errors,)
+
+
+@app.cell(hide_code=True)
+def _(mo, transfer_line_errors):
+    display_transfer_errors = ""
+    if transfer_line_errors: 
+        display_transfer_errors = "  \n".join(transfer_line_errors)
+    mo.md(display_transfer_errors)
     return
 
 
@@ -661,6 +646,39 @@ def _(
 
 @app.cell(hide_code=True)
 def _(mo):
+    open_warehouse_06_button = mo.ui.run_button(label="Check warehouse 06")
+    open_warehouse_06_button
+    return (open_warehouse_06_button,)
+
+
+@app.cell(hide_code=True)
+def _(BC_HEADERS, mo, odata_base, open_warehouse_06_button, pd, requests):
+    stuck_items_warning = ""
+    stuck_items = None
+    if open_warehouse_06_button.value:
+        warehouse_06_remaining = requests.get(f"{odata_base}/Item_Ledger_Entries_Excel?$select=Item_No,Item_Description,Remaining_Quantity&$filter=Location_Code eq '06' AND Remaining_Quantity gt 0", headers=BC_HEADERS, timeout=30).json()
+        if warehouse_06_remaining["value"]:
+            stuck_items_warning = "**WARNING — INVENTORY LEFT IN 06** \n\n Please check the following items and ship out:"
+            stuck_items = pd.DataFrame(warehouse_06_remaining["value"])
+            stuck_items = stuck_items[["Item_No", "Item_Description", "Remaining_Quantity"]]
+            stuck_items = stuck_items.groupby(["Item_No", "Item_Description"], as_index=False)["Remaining_Quantity"].sum()
+        else:
+            stuck_items_warning = "Warehouse 06 clear"
+    mo.md(stuck_items_warning)
+    return (stuck_items,)
+
+
+@app.cell(hide_code=True)
+def _(mo, stuck_items):
+    display_stuck_items = None
+    if stuck_items is not None:
+        display_stuck_items = mo.ui.table(stuck_items)
+    display_stuck_items
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
     mo.md(r"""
     ## Push back past-due lines
     """)
@@ -668,30 +686,81 @@ def _(mo):
 
 
 @app.cell
-def _(ATLCA_BUFFER_DAYS, CAMEL_BUFFER_DAYS, TRANSIT_DAYS, pd):
-    # TODO past-due date push
+def _(mo):
+    past_due_button = mo.ui.run_button(label="Check remaining overdue lines")
+    past_due_button
+    return (past_due_button,)
+
+
+@app.cell
+def _(pd, shipment_date):
+    # TODO rewrite based on product code when ATLCA merges back into CAMEL
+
+    CAMEL_BUFFER_DAYS = 84
+    ATLCA_BUFFER_DAYS = 7
+    TRANSIT_DAYS = 42
+
+    flex_cutoff_str = (shipment_date + pd.Timedelta(days=CAMEL_BUFFER_DAYS + TRANSIT_DAYS)).strftime("%Y-%m-%d")
+    vit_cutoff_str = (shipment_date + pd.Timedelta(ATLCA_BUFFER_DAYS + TRANSIT_DAYS)).strftime("%Y-%m-%d")
 
     def update_date(df):
         is_camel = df["Buy-from Vendor No."] == "CAMEL"
         df.loc[is_camel, "Ship Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=CAMEL_BUFFER_DAYS)
-        df.loc[is_camel, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=CAMEL_BUFFER_DAYS + TRANSIT_DAYS)
+        df.loc[is_camel, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=CAMEL_BUFFER_DAYS + TRANSIT_DAYS)  # have to explicitly write Expected Receipt Date as programmatic update doesn't trigger recalc
         df.loc[~is_camel, "Ship Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=ATLCA_BUFFER_DAYS)
-        df.loc[~is_camel, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=ATLCA_BUFFER_DAYS + TRANSIT_DAYS) # have to explicitly write Expected Receipt Date as programmatic update doesn't trigger recalc
+        df.loc[~is_camel, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=ATLCA_BUFFER_DAYS + TRANSIT_DAYS)
         return df
-
-
 
     return
 
 
 @app.cell
-def _():
+def _(BC_HEADERS, date_str, odata_base, past_due_button, pd, requests):
+    # adjust dates on anything remaining after processing the container
 
-    # revisit this logic later for the past-due date push
 
-    # Requested_Receipt_Date,Planned_Receipt_Date,Expected_Receipt_date,Inbound_Whse_Handling_Time
 
-    # filter to only lines shipped and/or past-due
+    past_due_lines = None 
+
+    if past_due_button.value:
+
+        # GET all lines with past-due or blank requested_receipt_date
+        get_past_due_lines = requests.get(f"{odata_base}/Purchase_Order_Line_Excel?$filter=Requested_Receipt_Date le {date_str} AND Qty_to_Receive gt 0 AND Type eq 2&$select=Document_Type,Document_No,Line_No,Type,No,Description,Quantity,Quantity_Received,Qty_to_Receive,Requested_Receipt_Date,Promised_Receipt_Date,Expected_Receipt_Date", headers=BC_HEADERS, timeout=30)
+        po_lines_df = pd.DataFrame(get_past_due_lines.json()["value"])
+
+        # GET vendors from headers
+        get_po_headers = requests.get(f"{odata_base}/Purchase_Order_Excel?$select=No, Buy_from_Vendor_No&$filter=Buy_from_Vendor_No eq 'CAMEL' or Buy_from_Vendor_No eq 'ATLCA'", headers=BC_HEADERS, timeout=30)
+        po_header_df = pd.DataFrame(get_po_headers.json()["value"])
+
+        # filter lines to CAMEL and ATLCA
+        past_due_lines = po_lines_df.merge(po_header_df, left_on="Document_No", right_on="No")
+
+    past_due_lines
+
+
+    # # data validation and confirmation
+    # bc_inv_get_confirmation = "Invoice POs loaded from BC. \n\n"
+
+    # # check all lines from the invoices are present in the data pull and alert user if not
+    # invoice_keys = set(invoice_dict)
+    # bc_inv_lines_keys = set(bc_inv_lines["po_item_key"])
+    # missing = invoice_keys - bc_inv_lines_keys
+    # if missing:
+    #     bc_inv_get_confirmation += (f"**WARNING** \n\nThese lines not found in BC. Either handle them manually or add to BC and rerun this cell.")
+    #     for po_item in missing:
+    #         bc_inv_get_confirmation += f"  \n{po_item} — {invoice_dict[po_item]}"
+
+    # # check all POs released and alert user if not
+    # not_released = bc_inv_headers[bc_inv_headers["Status"] != "Released"]
+    # if not not_released.empty:
+    #     bc_inv_get_confirmation += f"**WARNING** \n\n These POs are not Released and cannot be posted against. \n\n Get them released and rerun this cell."
+    #     for _, header_row in not_released.iterrows():
+    #         bc_inv_get_confirmation += f"  \n{header_row['No']} status is {header_row['Status']}"
+
+    # mo.md(bc_inv_get_confirmation)
+
+
+    # # filter to only lines shipped and/or past-due
 
     # shipped_pos = purlines["Document No."].isin(po_list)
 
