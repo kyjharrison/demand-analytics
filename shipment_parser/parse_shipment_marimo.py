@@ -6,19 +6,13 @@ app = marimo.App(width="medium")
 
 @app.cell
 def _():
-    #TODO add auto-open filtered list of orders to closeoutlist of orders to closeout and auto-open filtered list 
+    #TODO add auto-open filtered list of orders to closeout
     return
 
 
 @app.cell
 def _():
-    #TODO add list of discrepancies between total receipts and sales orders
-    return
-
-
-@app.cell
-def _():
-    # TODO add lines to adjust
+    #TODO add list of discrepancies between total receipts and sales orders (over/unders to adjust)
     return
 
 
@@ -30,7 +24,7 @@ def _():
 
 @app.cell
 def _():
-    #TODO any lines missing from PURLINES (like the -V vallen items don't get added to the transfer, need to fix that)
+    #TODO any lines missing from PURLINES to the transfer (like the -V vallen items don't get added to the transfer, need to fix that)
     return
 
 
@@ -685,105 +679,102 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(mo):
-    past_due_button = mo.ui.run_button(label="Check remaining overdue lines")
+    past_due_button = mo.ui.run_button(label="Push back overdue lines")
     past_due_button
     return (past_due_button,)
 
 
-@app.cell
-def _(pd, shipment_date):
+@app.cell(hide_code=True)
+def _(
+    BC_HEADERS,
+    date_str,
+    odata_base,
+    past_due_button,
+    pd,
+    requests,
+    shipment_date,
+):
+    # adjust dates on anything remaining after processing the container
+
     # TODO rewrite based on product code when ATLCA merges back into CAMEL
 
     CAMEL_BUFFER_DAYS = 84
     ATLCA_BUFFER_DAYS = 7
     TRANSIT_DAYS = 42
 
-    flex_cutoff_str = (shipment_date + pd.Timedelta(days=CAMEL_BUFFER_DAYS + TRANSIT_DAYS)).strftime("%Y-%m-%d")
-    vit_cutoff_str = (shipment_date + pd.Timedelta(ATLCA_BUFFER_DAYS + TRANSIT_DAYS)).strftime("%Y-%m-%d")
+    camel_cutoff = (shipment_date + pd.Timedelta(days=CAMEL_BUFFER_DAYS + TRANSIT_DAYS)).strftime("%Y-%m-%d")
+    atlca_cutoff = (shipment_date + pd.Timedelta(ATLCA_BUFFER_DAYS + TRANSIT_DAYS)).strftime("%Y-%m-%d")
 
-    def update_date(df):
-        is_camel = df["Buy-from Vendor No."] == "CAMEL"
-        df.loc[is_camel, "Ship Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=CAMEL_BUFFER_DAYS)
-        df.loc[is_camel, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=CAMEL_BUFFER_DAYS + TRANSIT_DAYS)  # have to explicitly write Expected Receipt Date as programmatic update doesn't trigger recalc
-        df.loc[~is_camel, "Ship Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=ATLCA_BUFFER_DAYS)
-        df.loc[~is_camel, "Expected Receipt Date"] = pd.Timestamp.today().normalize() + pd.Timedelta(days=ATLCA_BUFFER_DAYS + TRANSIT_DAYS)
-        return df
-
-    return
-
-
-@app.cell
-def _(BC_HEADERS, date_str, odata_base, past_due_button, pd, requests):
-    # adjust dates on anything remaining after processing the container
-
-
-
-    past_due_lines = None 
+    past_due_lines = None
 
     if past_due_button.value:
 
         # GET all lines with past-due or blank requested_receipt_date
-        get_past_due_lines = requests.get(f"{odata_base}/Purchase_Order_Line_Excel?$filter=Requested_Receipt_Date le {date_str} AND Qty_to_Receive gt 0 AND Type eq 2&$select=Document_Type,Document_No,Line_No,Type,No,Description,Quantity,Quantity_Received,Qty_to_Receive,Requested_Receipt_Date,Promised_Receipt_Date,Expected_Receipt_Date", headers=BC_HEADERS, timeout=30)
+        get_past_due_lines = requests.get(f"{odata_base}/Purchase_Order_Line_Excel?$filter=Requested_Receipt_Date le {date_str} AND Qty_to_Receive gt 0&$select=Document_Type,Document_No,Line_No,Type,No,Requested_Receipt_Date,Promised_Receipt_Date,Expected_Receipt_Date", headers=BC_HEADERS, timeout=30)
         po_lines_df = pd.DataFrame(get_past_due_lines.json()["value"])
+        po_lines_df = po_lines_df[po_lines_df["Type"] == "Item"]
 
         # GET vendors from headers
-        get_po_headers = requests.get(f"{odata_base}/Purchase_Order_Excel?$select=No, Buy_from_Vendor_No&$filter=Buy_from_Vendor_No eq 'CAMEL' or Buy_from_Vendor_No eq 'ATLCA'", headers=BC_HEADERS, timeout=30)
-        po_header_df = pd.DataFrame(get_po_headers.json()["value"])
+        get_po_headers = requests.get(f"{odata_base}/Purchase_Order_Excel?$select=No, Buy_from_Vendor_No&$filter=Buy_from_Vendor_No eq 'CAMEL' or Buy_from_Vendor_No eq 'ATLCA'", headers=BC_HEADERS, timeout=120)
+        po_header_df = pd.DataFrame(get_po_headers.json()["value"]).rename(columns={"No": "Document_No"})
 
         # filter lines to CAMEL and ATLCA
-        past_due_lines = po_lines_df.merge(po_header_df, left_on="Document_No", right_on="No")
+        # later will need to filter lines by dimension code 1 also
+        past_due_lines = po_lines_df.merge(po_header_df[["Document_No", "Buy_from_Vendor_No"]], on="Document_No")
+        past_due_lines = past_due_lines[
+            ((past_due_lines["Buy_from_Vendor_No"] == "CAMEL") & (past_due_lines["Expected_Receipt_Date"] < camel_cutoff))
+            | ((past_due_lines["Buy_from_Vendor_No"] == "ATLCA") & (past_due_lines["Expected_Receipt_Date"] < atlca_cutoff))
+        ]
+        if past_due_lines is not None and not past_due_lines.empty:
+            is_camel = past_due_lines["Buy_from_Vendor_No"] == "CAMEL"
+            past_due_lines.loc[is_camel, "New_Promised_Receipt_Date"] = (
+                shipment_date + pd.Timedelta(days=CAMEL_BUFFER_DAYS)
+                )
+            past_due_lines.loc[~is_camel, "New_Promised_Receipt_Date"] = (
+                shipment_date + pd.Timedelta(days=ATLCA_BUFFER_DAYS)
+            )
+            past_due_lines["New_Expected_Receipt_Date"] = past_due_lines["New_Promised_Receipt_Date"] + pd.Timedelta(days=TRANSIT_DAYS)
 
     past_due_lines
 
-
-    # # data validation and confirmation
-    # bc_inv_get_confirmation = "Invoice POs loaded from BC. \n\n"
-
-    # # check all lines from the invoices are present in the data pull and alert user if not
-    # invoice_keys = set(invoice_dict)
-    # bc_inv_lines_keys = set(bc_inv_lines["po_item_key"])
-    # missing = invoice_keys - bc_inv_lines_keys
-    # if missing:
-    #     bc_inv_get_confirmation += (f"**WARNING** \n\nThese lines not found in BC. Either handle them manually or add to BC and rerun this cell.")
-    #     for po_item in missing:
-    #         bc_inv_get_confirmation += f"  \n{po_item} — {invoice_dict[po_item]}"
-
-    # # check all POs released and alert user if not
-    # not_released = bc_inv_headers[bc_inv_headers["Status"] != "Released"]
-    # if not not_released.empty:
-    #     bc_inv_get_confirmation += f"**WARNING** \n\n These POs are not Released and cannot be posted against. \n\n Get them released and rerun this cell."
-    #     for _, header_row in not_released.iterrows():
-    #         bc_inv_get_confirmation += f"  \n{header_row['No']} status is {header_row['Status']}"
-
-    # mo.md(bc_inv_get_confirmation)
-
-
-    # # filter to only lines shipped and/or past-due
-
-    # shipped_pos = purlines["Document No."].isin(po_list)
-
-    # atlca_past_due = (
-    #     (purlines["Buy-from Vendor No."] == "ATLCA")
-    #     & (purlines["Requested Receipt Date"] < shipment_date + pd.Timedelta(days=ATLCA_BUFFER_DAYS))
-    #     & (purlines["Outstanding_Quantity"] > 0)
-    # )
-    # camel_past_due = (
-    #     (purlines["Buy-from Vendor No."] == "CAMEL")
-    #     & (purlines["Requested Receipt Date"] < shipment_date + pd.Timedelta(days=CAMEL_BUFFER_DAYS))
-    #     & (purlines["Outstanding_Quantity"] > 0)
-    # )
-
-    # filtered_purlines = (
-    #     purlines
-    #     .assign(past_due=atlca_past_due | camel_past_due)
-    #     .loc[lambda d: shipped_pos | d["past_due"]]
-    #     .reset_index(drop=True)
-    # )
-
-    # filtered_purlines
     return
+
+
+app._unparsable_cell(
+    r"""
+    date_patch_confirmation = ""
+    date_patch_errors = []
+
+    if past_due_lines is not None and not past_due_lines.empty:
+
+        # PATCH dates on PO lines
+        for _, patch_date_row in past_due_lines.iterrows():
+            past_due_line_response = requests.patch(
+                f"{odata_base}/Purchase_Order_Line_Excel(Document_Type='{patch_date_row['Document_Type']}',Document_No='{patch_date_row['Document_No']}',Line_No={patch_date_row['Line_No']})",
+                headers={**BC_HEADERS, "Content-Type": "application/json", "If-Match": patch_date_row["@odata.etag"]},
+                json={
+                    "Promised_Receipt_Date": patch_date_row["New_Promised_Receipt_Date"].strftime("%Y-%m-%d"),
+                    "Expected_Receipt_Date": patch_date_row["New_Expected_Receipt_Date"].strftime("%Y-%m-%d"),
+                },
+                timeout=30,
+            )
+            if past_due_line_response.status_code != 200:
+                date_patch_errors.append(f"{patch_date_row['Document_No']}: {past_due_line_response.status_code} — {past_due_line_response.text}")
+
+        if date_patch_errors:
+            date_patch_confirmation = "**ERRORS:**\n\n" + "\n\n".join(date_patch_errors)
+        else:
+            date_patch_confirmation = "All updates applied."
+
+    else if past_due_button.value:
+        date_patch_confirmation = "No past-due lines found."
+
+    mo.md(date_patch_confirmation)
+    """,
+    column=None, disabled=False, hide_code=True, name="_"
+)
 
 
 if __name__ == "__main__":
